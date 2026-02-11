@@ -260,44 +260,40 @@ class BydGpsUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._inactive_interval = timedelta(seconds=inactive_interval)
         self._last_smart_state: bool | None = None
 
-    def _is_any_vehicle_online(self) -> bool:
-        """Check if any vehicle reports online_state == 1 from telemetry data."""
-        if self._telemetry_coordinator is None:
-            _LOGGER.debug("Smart GPS: no telemetry coordinator available")
+    def _is_any_vehicle_moving(self, data: dict[str, Any]) -> bool:
+        """Check if any vehicle is moving based on GPS speed."""
+        gps_map = data.get("gps", {})
+        if not gps_map:
+            _LOGGER.debug("Smart GPS: no GPS data available yet")
             return False
-        data = self._telemetry_coordinator.data
-        if not data or "realtime" not in data:
-            _LOGGER.debug("Smart GPS: no realtime data available yet")
-            return False
-        for vin, realtime in data["realtime"].items():
-            if realtime is None:
+        for vin, gps in gps_map.items():
+            if gps is None:
                 continue
-            online = getattr(realtime, "online_state", None)
+            speed = getattr(gps, "speed", None)
             _LOGGER.debug(
-                "Smart GPS: VIN %s online_state=%s (is_online=%s)",
+                "Smart GPS: VIN %s speed=%s",
                 vin[-6:],
-                online,
-                getattr(realtime, "is_online", "N/A"),
+                speed,
             )
-            if online == 1:
+            if speed is not None and speed > 0:
                 return True
         return False
 
-    def _adjust_interval(self) -> None:
-        """Adjust the polling interval based on vehicle online state."""
+    def _adjust_interval(self, data: dict[str, Any]) -> None:
+        """Adjust the polling interval based on vehicle movement."""
         if not self._smart_polling:
             return
-        is_online = self._is_any_vehicle_online()
-        new_interval = self._active_interval if is_online else self._inactive_interval
+        is_moving = self._is_any_vehicle_moving(data)
+        new_interval = self._active_interval if is_moving else self._inactive_interval
         if self.update_interval != new_interval:
             _LOGGER.info(
                 "Smart GPS polling: vehicle %s, interval %ss -> %ss",
-                "online" if is_online else "offline",
+                "moving" if is_moving else "stationary",
                 self.update_interval.total_seconds(),
                 new_interval.total_seconds(),
             )
             self.update_interval = new_interval
-            self._last_smart_state = is_online
+            self._last_smart_state = is_moving
 
     async def _async_update_data(self) -> dict[str, Any]:
         async def _fetch(client: BydClient) -> dict[str, Any]:
@@ -331,7 +327,7 @@ class BydGpsUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             }
 
         data = await self._api.async_call(_fetch)
-        self._adjust_interval()
+        self._adjust_interval(data)
         return data
 
 
