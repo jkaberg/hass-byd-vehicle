@@ -1,5 +1,12 @@
 # BYD Vehicle Integration for Home Assistant
 
+## PLEASE READ FIRST!
+
+This integration and the subsequent library is an alpha stage, especially the library needs work to map out all the sensor states an parsing correctly.
+
+I urge any and everyone to contribute to this work so that we all can enjoy the fruits, for more information see [pyBYD](https://github.com/jkaberg/pyBYD).
+
+
 ## Description
 
 The `byd_vehicle` integration connects Home Assistant to the BYD cloud service
