@@ -8,6 +8,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
+    CONF_DEVICE_PROFILE,
     CONF_GPS_ACTIVE_INTERVAL,
     CONF_GPS_INACTIVE_INTERVAL,
     CONF_GPS_POLL_INTERVAL,
@@ -22,11 +23,18 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import BydApi, BydDataUpdateCoordinator, BydGpsUpdateCoordinator
+from .device_fingerprint import generate_device_profile
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BYD Vehicle from a config entry."""
     hass.data.setdefault(DOMAIN, {})
+
+    # Ensure a device fingerprint exists (backfill for pre-existing entries)
+    if CONF_DEVICE_PROFILE not in entry.data:
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, CONF_DEVICE_PROFILE: generate_device_profile()}
+        )
 
     session = async_get_clientsession(hass)
     api = BydApi(hass, entry, session)

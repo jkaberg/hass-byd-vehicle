@@ -11,7 +11,6 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-
 from pybyd.models.realtime import LockState
 
 from .const import DOMAIN
@@ -39,6 +38,9 @@ async def async_setup_entry(
 class BydLock(CoordinatorEntity, LockEntity):
     """Representation of BYD lock control."""
 
+    _attr_has_entity_name = True
+    _attr_name = "Lock"
+
     def __init__(
         self,
         coordinator: BydDataUpdateCoordinator,
@@ -51,9 +53,15 @@ class BydLock(CoordinatorEntity, LockEntity):
         self._vin = vin
         self._vehicle = vehicle
         self._attr_unique_id = f"{vin}_lock"
-        self._attr_name = f"{get_vehicle_display(vehicle)} lock"
         self._last_command: str | None = None
         self._last_locked: bool | None = None
+
+    @property
+    def available(self) -> bool:
+        """Available when coordinator has realtime data."""
+        if not super().available:
+            return False
+        return self.coordinator.data.get("realtime", {}).get(self._vin) is not None
 
     def _get_realtime_locks(self) -> list[bool] | None:
         realtime_map = self.coordinator.data.get("realtime", {})
@@ -93,9 +101,7 @@ class BydLock(CoordinatorEntity, LockEntity):
         try:
             self._last_command = "lock"
             self._last_locked = True
-            await self._api.async_call(
-                _call, vin=self._vin, command=self._last_command
-            )
+            await self._api.async_call(_call, vin=self._vin, command=self._last_command)
         except Exception as exc:  # noqa: BLE001
             raise HomeAssistantError(str(exc)) from exc
 
@@ -106,9 +112,7 @@ class BydLock(CoordinatorEntity, LockEntity):
         try:
             self._last_command = "unlock"
             self._last_locked = False
-            await self._api.async_call(
-                _call, vin=self._vin, command=self._last_command
-            )
+            await self._api.async_call(_call, vin=self._vin, command=self._last_command)
         except Exception as exc:  # noqa: BLE001
             raise HomeAssistantError(str(exc)) from exc
 
@@ -129,6 +133,6 @@ class BydLock(CoordinatorEntity, LockEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self._vin)},
             name=get_vehicle_display(self._vehicle),
-            manufacturer=self._vehicle.brand_name or "BYD",
-            model=self._vehicle.model_name or None,
+            manufacturer=getattr(self._vehicle, "brand_name", None) or "BYD",
+            model=getattr(self._vehicle, "model_name", None),
         )

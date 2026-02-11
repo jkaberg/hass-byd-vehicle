@@ -1,0 +1,218 @@
+[
+    {
+        "mobile_brand": "SAMSUNG",
+        "mobile_model": "SM-S928B",
+        "model": "SM-S928B",
+        "mod": "samsung",
+        "tac_prefix": "35362711",
+        "sdk_options": ["33", "34", "35"],
+        "os_options": ["13", "14", "15"]
+    },
+    {
+        "mobile_brand": "SAMSUNG",
+        "mobile_model": "SM-S926B",
+        "model": "SM-S926B",
+        "mod": "samsung",
+        "tac_prefix": "35362611",
+        "sdk_options": ["33", "34", "35"],
+        "os_options": ["13", "14", "15"]
+    },
+    {
+        "mobile_brand": "SAMSUNG",
+        "mobile_model": "SM-S921B",
+        "model": "SM-S921B",
+        "mod": "samsung",
+        "tac_prefix": "35362111",
+        "sdk_options": ["33", "34", "35"],
+        "os_options": ["13", "14", "15"]
+    },
+    {
+        "mobile_brand": "SAMSUNG",
+        "mobile_model": "SM-A556B",
+        "model": "SM-A556B",
+        "mod": "samsung",
+        "tac_prefix": "35290412",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "SAMSUNG",
+        "mobile_model": "SM-A546B",
+        "model": "SM-A546B",
+        "mod": "samsung",
+        "tac_prefix": "35284512",
+        "sdk_options": ["33", "34", "35"],
+        "os_options": ["13", "14", "15"]
+    },
+    {
+        "mobile_brand": "XIAOMI",
+        "mobile_model": "24129PN74G",
+        "model": "Xiaomi 15",
+        "mod": "Xiaomi",
+        "tac_prefix": "86943604",
+        "sdk_options": ["35"],
+        "os_options": ["15"]
+    },
+    {
+        "mobile_brand": "XIAOMI",
+        "mobile_model": "2407FPN8EG",
+        "model": "Xiaomi 14T Pro",
+        "mod": "Xiaomi",
+        "tac_prefix": "86943504",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "XIAOMI",
+        "mobile_model": "23113RKC6G",
+        "model": "POCO X6 Pro",
+        "mod": "Xiaomi",
+        "tac_prefix": "86388105",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "XIAOMI",
+        "mobile_model": "2311DRK48G",
+        "model": "Redmi Note 13 Pro+ 5G",
+        "mod": "Xiaomi",
+        "tac_prefix": "86388205",
+        "sdk_options": ["33", "34"],
+        "os_options": ["13", "14"]
+    },
+    {
+        "mobile_brand": "ONEPLUS",
+        "mobile_model": "CPH2611",
+        "model": "CPH2611",
+        "mod": "OnePlus",
+        "tac_prefix": "86751604",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "ONEPLUS",
+        "mobile_model": "CPH2583",
+        "model": "CPH2583",
+        "mod": "OnePlus",
+        "tac_prefix": "86751504",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "ONEPLUS",
+        "mobile_model": "CPH2449",
+        "model": "CPH2449",
+        "mod": "OnePlus",
+        "tac_prefix": "86751304",
+        "sdk_options": ["33", "34"],
+        "os_options": ["13", "14"]
+    },
+    {
+        "mobile_brand": "GOOGLE",
+        "mobile_model": "Pixel 9 Pro",
+        "model": "Pixel 9 Pro",
+        "mod": "Google",
+        "tac_prefix": "35824533",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "GOOGLE",
+        "mobile_model": "Pixel 8",
+        "model": "Pixel 8",
+        "mod": "Google",
+        "tac_prefix": "35823633",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "GOOGLE",
+        "mobile_model": "Pixel 8a",
+        "model": "Pixel 8a",
+        "mod": "Google",
+        "tac_prefix": "35823733",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "OPPO",
+        "mobile_model": "CPH2573",
+        "model": "CPH2573",
+        "mod": "OPPO",
+        "tac_prefix": "86420405",
+        "sdk_options": ["33", "34"],
+        "os_options": ["13", "14"]
+    },
+    {
+        "mobile_brand": "OPPO",
+        "mobile_model": "CPH2591",
+        "model": "CPH2591",
+        "mod": "OPPO",
+        "tac_prefix": "86420505",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "MOTOROLA",
+        "mobile_model": "XT2351-1",
+        "model": "moto edge 50 pro",
+        "mod": "motorola",
+        "tac_prefix": "35982115",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "MOTOROLA",
+        "mobile_model": "XT2343-2",
+        "model": "moto g84",
+        "mod": "motorola",
+        "tac_prefix": "35982015",
+        "sdk_options": ["33", "34"],
+        "os_options": ["13", "14"]
+    },
+    {
+        "mobile_brand": "NOKIA",
+        "mobile_model": "TA-1643",
+        "model": "Nokia X30",
+        "mod": "HMD Global",
+        "tac_prefix": "35566112",
+        "sdk_options": ["33", "34"],
+        "os_options": ["13", "14"]
+    },
+    {
+        "mobile_brand": "REALME",
+        "mobile_model": "RMX3931",
+        "model": "realme GT 6",
+        "mod": "realme",
+        "tac_prefix": "86908705",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    },
+    {
+        "mobile_brand": "NOTHING",
+        "mobile_model": "A065",
+        "model": "Nothing Phone (2)",
+        "mod": "Nothing",
+        "tac_prefix": "86429904",
+        "sdk_options": ["33", "34"],
+        "os_options": ["13", "14"]
+    },
+    {
+        "mobile_brand": "HUAWEI",
+        "mobile_model": "ALN-AL00",
+        "model": "HUAWEI Pura 70 Pro",
+        "mod": "HUAWEI",
+        "tac_prefix": "86720604",
+        "sdk_options": ["33", "34"],
+        "os_options": ["13", "14"]
+    },
+    {
+        "mobile_brand": "SONY",
+        "mobile_model": "XQ-DQ72",
+        "model": "Xperia 1 VI",
+        "mod": "Sony",
+        "tac_prefix": "35394712",
+        "sdk_options": ["34", "35"],
+        "os_options": ["14", "15"]
+    }
+]

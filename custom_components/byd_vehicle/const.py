@@ -7,10 +7,13 @@ from homeassistant.const import Platform
 DOMAIN = "byd_vehicle"
 
 PLATFORMS: list[Platform] = [
-    Platform.SENSOR,
-    Platform.DEVICE_TRACKER,
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
     Platform.CLIMATE,
+    Platform.DEVICE_TRACKER,
     Platform.LOCK,
+    Platform.SELECT,
+    Platform.SENSOR,
     Platform.SWITCH,
 ]
 
@@ -22,6 +25,8 @@ CONF_GPS_POLL_INTERVAL = "gps_poll_interval"
 CONF_SMART_GPS_POLLING = "smart_gps_polling"
 CONF_GPS_ACTIVE_INTERVAL = "gps_active_interval"
 CONF_GPS_INACTIVE_INTERVAL = "gps_inactive_interval"
+CONF_DEVICE_PROFILE = "device_profile"
+CONF_CONTROL_PIN = "control_pin"
 
 DEFAULT_POLL_INTERVAL = 300
 DEFAULT_GPS_POLL_INTERVAL = 300

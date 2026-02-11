@@ -15,7 +15,9 @@ from pybyd.config import BydConfig
 from .const import (
     BASE_URLS,
     CONF_BASE_URL,
+    CONF_CONTROL_PIN,
     CONF_COUNTRY_CODE,
+    CONF_DEVICE_PROFILE,
     CONF_GPS_ACTIVE_INTERVAL,
     CONF_GPS_INACTIVE_INTERVAL,
     CONF_GPS_POLL_INTERVAL,
@@ -31,6 +33,7 @@ from .const import (
     DEFAULT_SMART_GPS_POLLING,
     DOMAIN,
 )
+from .device_fingerprint import generate_device_profile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,16 +50,16 @@ async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
         country_code=country_code,
         language=language,
         time_zone=time_zone,
+        control_pin=data.get(CONF_CONTROL_PIN) or None,
     )
     async with BydClient(config, session=session) as client:
         await client.login()
         await client.get_vehicles()
 
 
-class BydVehicleConfigFlow(config_entries.ConfigFlow):
+class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for BYD Vehicle."""
 
-    domain = DOMAIN
     VERSION = 1
 
     async def async_step_user(
@@ -89,14 +92,14 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow):
                         CONF_BASE_URL: base_url,
                         CONF_COUNTRY_CODE: country_code,
                         CONF_LANGUAGE: language,
+                        CONF_DEVICE_PROFILE: generate_device_profile(),
+                        CONF_CONTROL_PIN: user_input.get(CONF_CONTROL_PIN, ""),
                     },
                     options={
                         CONF_POLL_INTERVAL: user_input[CONF_POLL_INTERVAL],
                         CONF_GPS_POLL_INTERVAL: user_input[CONF_GPS_POLL_INTERVAL],
                         CONF_SMART_GPS_POLLING: user_input[CONF_SMART_GPS_POLLING],
-                        CONF_GPS_ACTIVE_INTERVAL: user_input[
-                            CONF_GPS_ACTIVE_INTERVAL
-                        ],
+                        CONF_GPS_ACTIVE_INTERVAL: user_input[CONF_GPS_ACTIVE_INTERVAL],
                         CONF_GPS_INACTIVE_INTERVAL: user_input[
                             CONF_GPS_INACTIVE_INTERVAL
                         ],
@@ -108,6 +111,7 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow):
                 vol.Required(CONF_BASE_URL, default="Europe"): vol.In(list(BASE_URLS)),
                 vol.Required("username"): str,
                 vol.Required("password"): str,
+                vol.Optional(CONF_CONTROL_PIN, default=""): str,
                 vol.Required(
                     CONF_COUNTRY_CODE,
                     default=DEFAULT_COUNTRY,

@@ -2,21 +2,25 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
+    EntityCategory,
     UnitOfLength,
     UnitOfPressure,
     UnitOfSpeed,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
@@ -26,195 +30,586 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .coordinator import (
     BydDataUpdateCoordinator,
-    BydGpsUpdateCoordinator,
-    expand_metrics,
-    extract_raw,
     get_vehicle_display,
 )
 
-_UNIT_HINTS: dict[str, str] = {
-    "percent": PERCENTAGE,
-    "mileage": "km",
-    "endurance": "km",
-    "speed": "km/h",
-    "temp": "C",
-    "pressure": "bar",
-    "direction": "deg",
-}
+
+@dataclass(frozen=True, kw_only=True)
+class BydSensorDescription(SensorEntityDescription):
+    """Describe a BYD sensor."""
+
+    source: str = "realtime"
+    attr_key: str | None = None
+    value_fn: Callable[[Any], Any] | None = None
 
 
-@dataclass(frozen=True)
-class BydSensorDescription:
-    """Description for explicit BYD sensors."""
-
-    key: str
-    name: str
-    source_key: str
-    category: str
-    unit: str | None = None
-    device_class: SensorDeviceClass | None = None
-    state_class: SensorStateClass | None = None
+def _filter_temp(obj: Any) -> float | None:
+    """Filter out -129 sentinel temperature values."""
+    val = getattr(obj, "temp_in_car", None)
+    if val is None or val == -129:
+        return None
+    return float(val)
 
 
-EXPLICIT_SENSORS: list[BydSensorDescription] = [
+def _filter_string_attr(attr: str) -> Callable[[Any], str | None]:
+    """Create a filter that removes '--' sentinel values for a named attribute."""
+
+    def _filter(obj: Any) -> str | None:
+        val = getattr(obj, attr, None)
+        if val is None or val == "--":
+            return None
+        return str(val)
+
+    return _filter
+
+
+def _minutes_to_full(obj: Any) -> int | None:
+    """Calculate minutes to full from hour/minute fields."""
+    h = getattr(obj, "full_hour", None)
+    m = getattr(obj, "full_minute", None)
+    if h is None or m is None or h < 0 or m < 0:
+        return None
+    return h * 60 + m
+
+
+SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
+    # =============================================
+    # Realtime: primary sensors (enabled by default)
+    # =============================================
     BydSensorDescription(
         key="elec_percent",
-        name="Battery",
-        source_key="realtime",
-        category="realtime",
-        unit=PERCENTAGE,
+        name="Battery level",
+        source="realtime",
+        native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     BydSensorDescription(
         key="endurance_mileage",
         name="Range",
-        source_key="realtime",
-        category="realtime",
-        unit=UnitOfLength.KILOMETERS,
+        source="realtime",
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:map-marker-distance",
     ),
     BydSensorDescription(
         key="total_mileage",
         name="Odometer",
-        source_key="realtime",
-        category="realtime",
-        unit=UnitOfLength.KILOMETERS,
+        source="realtime",
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:counter",
     ),
     BydSensorDescription(
         key="speed",
         name="Speed",
-        source_key="realtime",
-        category="realtime",
-        unit=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        source="realtime",
+        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         device_class=SensorDeviceClass.SPEED,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     BydSensorDescription(
         key="temp_in_car",
         name="Cabin temperature",
-        source_key="realtime",
-        category="realtime",
-        unit=UnitOfTemperature.CELSIUS,
+        source="realtime",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_filter_temp,
     ),
+    # Tire pressures
     BydSensorDescription(
         key="left_front_tire_pressure",
-        name="Left front tire pressure",
-        source_key="realtime",
-        category="realtime",
-        unit=UnitOfPressure.BAR,
+        name="Front left tire pressure",
+        source="realtime",
+        native_unit_of_measurement=UnitOfPressure.BAR,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:car-tire-alert",
     ),
     BydSensorDescription(
         key="right_front_tire_pressure",
-        name="Right front tire pressure",
-        source_key="realtime",
-        category="realtime",
-        unit=UnitOfPressure.BAR,
+        name="Front right tire pressure",
+        source="realtime",
+        native_unit_of_measurement=UnitOfPressure.BAR,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:car-tire-alert",
     ),
     BydSensorDescription(
         key="left_rear_tire_pressure",
-        name="Left rear tire pressure",
-        source_key="realtime",
-        category="realtime",
-        unit=UnitOfPressure.BAR,
+        name="Rear left tire pressure",
+        source="realtime",
+        native_unit_of_measurement=UnitOfPressure.BAR,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:car-tire-alert",
     ),
     BydSensorDescription(
         key="right_rear_tire_pressure",
-        name="Right rear tire pressure",
-        source_key="realtime",
-        category="realtime",
-        unit=UnitOfPressure.BAR,
+        name="Rear right tire pressure",
+        source="realtime",
+        native_unit_of_measurement=UnitOfPressure.BAR,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:car-tire-alert",
     ),
-    BydSensorDescription(
-        key="total_energy",
-        name="Total energy",
-        source_key="energy",
-        category="energy",
-    ),
-    BydSensorDescription(
-        key="avg_energy_consumption",
-        name="Average energy consumption",
-        source_key="energy",
-        category="energy",
-    ),
-    BydSensorDescription(
-        key="electricity_consumption",
-        name="Electricity consumption",
-        source_key="energy",
-        category="energy",
-    ),
-    BydSensorDescription(
-        key="fuel_consumption",
-        name="Fuel consumption",
-        source_key="energy",
-        category="energy",
-    ),
+    # ===============================================
+    # Charging: primary sensors (enabled by default)
+    # ===============================================
     BydSensorDescription(
         key="soc",
         name="Charging SOC",
-        source_key="charging",
-        category="charging",
-        unit=PERCENTAGE,
+        source="charging",
+        native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     BydSensorDescription(
-        key="charging_state",
-        name="Charging state",
-        source_key="charging",
-        category="charging",
+        key="time_to_full",
+        name="Time to full charge",
+        source="charging",
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        device_class=SensorDeviceClass.DURATION,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:battery-clock",
+        value_fn=_minutes_to_full,
+    ),
+    # =============================================
+    # Energy: primary sensors (enabled by default)
+    # =============================================
+    BydSensorDescription(
+        key="total_energy",
+        name="Total energy consumption",
+        source="energy",
+        icon="mdi:lightning-bolt",
     ),
     BydSensorDescription(
-        key="connect_state",
-        name="Charger connection",
-        source_key="charging",
-        category="charging",
+        key="avg_energy_consumption",
+        name="Average energy consumption",
+        source="energy",
+        icon="mdi:lightning-bolt",
     ),
-    BydSensorDescription(
-        key="ac_switch",
-        name="AC switch",
-        source_key="hvac",
-        category="hvac",
-    ),
+    # =============================================
+    # HVAC: primary sensors (enabled by default)
+    # =============================================
     BydSensorDescription(
         key="temp_out_car",
         name="Exterior temperature",
-        source_key="hvac",
-        category="hvac",
-        unit=UnitOfTemperature.CELSIUS,
+        source="hvac",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
-]
-
-EXPLICIT_FIELDS_BY_SOURCE: dict[str, set[str]] = {
-    "realtime": {
-        desc.key for desc in EXPLICIT_SENSORS if desc.source_key == "realtime"
-    },
-    "energy": {
-        desc.key for desc in EXPLICIT_SENSORS if desc.source_key == "energy"
-    },
-    "hvac": {
-        desc.key for desc in EXPLICIT_SENSORS if desc.source_key == "hvac"
-    },
-    "charging": {
-        desc.key for desc in EXPLICIT_SENSORS if desc.source_key == "charging"
-    },
-    "vehicle": set(),
-}
+    BydSensorDescription(
+        key="pm",
+        name="PM2.5",
+        source="hvac",
+        native_unit_of_measurement="µg/m³",
+        device_class=SensorDeviceClass.PM25,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    # ===========================================================
+    # Realtime: disabled by default (diagnostic / secondary data)
+    # ===========================================================
+    # Alt battery / range fields
+    BydSensorDescription(
+        key="power_battery",
+        name="Power battery level",
+        source="realtime",
+        native_unit_of_measurement=PERCENTAGE,
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="ev_endurance",
+        name="EV endurance",
+        source="realtime",
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        device_class=SensorDeviceClass.DISTANCE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="endurance_mileage_v2",
+        name="Range V2",
+        source="realtime",
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        device_class=SensorDeviceClass.DISTANCE,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="total_mileage_v2",
+        name="Odometer V2",
+        source="realtime",
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        device_class=SensorDeviceClass.DISTANCE,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # Driving
+    BydSensorDescription(
+        key="power_gear",
+        name="Gear position",
+        source="realtime",
+        icon="mdi:car-shift-pattern",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # Charging detail from realtime
+    BydSensorDescription(
+        key="charging_state",
+        name="Charging state",
+        source="realtime",
+        icon="mdi:ev-station",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="charge_state",
+        name="Charge state",
+        source="realtime",
+        icon="mdi:ev-station",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="wait_status",
+        name="Charge wait status",
+        source="realtime",
+        icon="mdi:timer-sand",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="full_hour",
+        name="Hours to full",
+        source="realtime",
+        icon="mdi:clock-outline",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="full_minute",
+        name="Minutes to full",
+        source="realtime",
+        icon="mdi:clock-outline",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="charge_remaining_hours",
+        name="Charge remaining hours",
+        source="realtime",
+        icon="mdi:clock-outline",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="charge_remaining_minutes",
+        name="Charge remaining minutes",
+        source="realtime",
+        icon="mdi:clock-outline",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="booking_charge_state",
+        name="Scheduled charging",
+        source="realtime",
+        icon="mdi:calendar-clock",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="booking_charging_hour",
+        name="Scheduled charge hour",
+        source="realtime",
+        icon="mdi:calendar-clock",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="booking_charging_minute",
+        name="Scheduled charge minute",
+        source="realtime",
+        icon="mdi:calendar-clock",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # Tire status indicators
+    BydSensorDescription(
+        key="left_front_tire_status",
+        name="Front left tire status",
+        source="realtime",
+        icon="mdi:car-tire-alert",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="right_front_tire_status",
+        name="Front right tire status",
+        source="realtime",
+        icon="mdi:car-tire-alert",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="left_rear_tire_status",
+        name="Rear left tire status",
+        source="realtime",
+        icon="mdi:car-tire-alert",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="right_rear_tire_status",
+        name="Rear right tire status",
+        source="realtime",
+        icon="mdi:car-tire-alert",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="tirepressure_system",
+        name="TPMS state",
+        source="realtime",
+        icon="mdi:car-tire-alert",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="rapid_tire_leak",
+        name="Rapid tire leak",
+        source="realtime",
+        icon="mdi:car-tire-alert",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # Power / energy from realtime
+    BydSensorDescription(
+        key="total_power",
+        name="Total power",
+        source="realtime",
+        icon="mdi:flash",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="nearest_energy_consumption",
+        name="Recent energy consumption",
+        source="realtime",
+        icon="mdi:lightning-bolt",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_filter_string_attr("nearest_energy_consumption"),
+    ),
+    BydSensorDescription(
+        key="recent_50km_energy",
+        name="Recent 50km energy",
+        source="realtime",
+        icon="mdi:lightning-bolt",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_filter_string_attr("recent_50km_energy"),
+    ),
+    # Fuel (hybrid vehicles)
+    BydSensorDescription(
+        key="oil_endurance",
+        name="Fuel range",
+        source="realtime",
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        icon="mdi:gas-station",
+        entity_registry_enabled_default=False,
+    ),
+    BydSensorDescription(
+        key="oil_percent",
+        name="Fuel level",
+        source="realtime",
+        native_unit_of_measurement=PERCENTAGE,
+        icon="mdi:gas-station",
+        entity_registry_enabled_default=False,
+    ),
+    BydSensorDescription(
+        key="total_oil",
+        name="Total fuel consumption",
+        source="realtime",
+        icon="mdi:gas-station",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # System indicators
+    BydSensorDescription(
+        key="engine_status",
+        name="Engine status",
+        source="realtime",
+        icon="mdi:engine",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="epb",
+        name="Electronic parking brake",
+        source="realtime",
+        icon="mdi:car-brake-parking",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="eps",
+        name="Electric power steering",
+        source="realtime",
+        icon="mdi:steering",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="esp",
+        name="Electronic stability",
+        source="realtime",
+        icon="mdi:car-traction-control",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="abs_warning",
+        name="ABS warning",
+        source="realtime",
+        icon="mdi:car-brake-abs",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="svs",
+        name="Service vehicle soon",
+        source="realtime",
+        icon="mdi:car-wrench",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="srs",
+        name="Airbag warning",
+        source="realtime",
+        icon="mdi:airbag",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="ect",
+        name="Coolant temperature warning",
+        source="realtime",
+        icon="mdi:coolant-temperature",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="ect_value",
+        name="Coolant temperature",
+        source="realtime",
+        icon="mdi:coolant-temperature",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="pwr",
+        name="Power warning",
+        source="realtime",
+        icon="mdi:flash-alert",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="power_system",
+        name="Power system",
+        source="realtime",
+        icon="mdi:flash",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="upgrade_status",
+        name="OTA upgrade status",
+        source="realtime",
+        icon="mdi:cellphone-arrow-down",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # ============================================
+    # Charging API: disabled by default (detail)
+    # ============================================
+    BydSensorDescription(
+        key="charger_state",
+        name="Charger state",
+        source="charging",
+        attr_key="charging_state",
+        icon="mdi:ev-station",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="charger_connection",
+        name="Charger connection state",
+        source="charging",
+        attr_key="connect_state",
+        icon="mdi:ev-plug-type2",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="charging_update_time",
+        name="Charging last update",
+        source="charging",
+        attr_key="update_time",
+        icon="mdi:clock-outline",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # ==========================================
+    # Energy API: disabled by default (detail)
+    # ==========================================
+    BydSensorDescription(
+        key="electricity_consumption",
+        name="Electricity consumption",
+        source="energy",
+        icon="mdi:lightning-bolt",
+        entity_registry_enabled_default=False,
+    ),
+    BydSensorDescription(
+        key="fuel_consumption",
+        name="Fuel consumption",
+        source="energy",
+        icon="mdi:gas-station",
+        entity_registry_enabled_default=False,
+    ),
+    # =========================================
+    # HVAC: standalone sensors (not climate)
+    # =========================================
+    BydSensorDescription(
+        key="refrigerator_state",
+        name="Refrigerator",
+        source="hvac",
+        icon="mdi:fridge",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="refrigerator_door_state",
+        name="Refrigerator door",
+        source="hvac",
+        icon="mdi:fridge",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+)
 
 
 async def async_setup_entry(
@@ -222,179 +617,90 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
+    """Set up BYD sensors from a config entry."""
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator: BydDataUpdateCoordinator = data["coordinator"]
-    gps_coordinator: BydGpsUpdateCoordinator = data["gps_coordinator"]
 
     entities: list[SensorEntity] = []
-
     vehicle_map = coordinator.data.get("vehicles", {})
 
     for vin, vehicle in vehicle_map.items():
-        for description in EXPLICIT_SENSORS:
-            active_coordinator = (
-                coordinator
-                if description.source_key != "gps"
-                else gps_coordinator
-            )
-            entities.append(
-                BydTelemetrySensor(
-                    active_coordinator,
-                    vin,
-                    vehicle,
-                    description,
-                )
-            )
-        for category, source_key, source in (
-            ("vehicle", "vehicle", vehicle_map),
-            ("realtime", "realtime", coordinator.data.get("realtime", {})),
-            ("energy", "energy", coordinator.data.get("energy", {})),
-            ("hvac", "hvac", coordinator.data.get("hvac", {})),
-            ("charging", "charging", coordinator.data.get("charging", {})),
-        ):
-            metrics = (
-                expand_metrics(source.get(vin)) if source.get(vin) is not None else {}
-            )
-            for field in metrics:
-                if field in EXPLICIT_FIELDS_BY_SOURCE.get(source_key, set()):
-                    continue
-                entities.append(
-                    BydMetricSensor(
-                        coordinator if source_key != "gps" else gps_coordinator,
-                        vin,
-                        vehicle,
-                        category,
-                        field,
-                        source_key,
-                    )
-                )
+        for description in SENSOR_DESCRIPTIONS:
+            entities.append(BydSensor(coordinator, vin, vehicle, description))
 
     async_add_entities(entities)
 
 
-class BydTelemetrySensor(CoordinatorEntity, SensorEntity):
-    """Representation of a BYD sensor with explicit metadata."""
+class BydSensor(CoordinatorEntity, SensorEntity):
+    """Representation of a BYD vehicle sensor."""
+
+    _attr_has_entity_name = True
+    entity_description: BydSensorDescription
 
     def __init__(
         self,
-        coordinator: BydDataUpdateCoordinator | BydGpsUpdateCoordinator,
+        coordinator: BydDataUpdateCoordinator,
         vin: str,
         vehicle: Any,
         description: BydSensorDescription,
     ) -> None:
+        """Initialize the sensor."""
         super().__init__(coordinator)
-        self._vin = vin
-        self._vehicle = vehicle
         self.entity_description = description
-        self._attr_unique_id = f"{vin}_{description.source_key}_{description.key}"
-        self._attr_name = (
-            f"{get_vehicle_display(vehicle)} {description.name}".replace("_", " ")
-        )
-        self._attr_native_unit_of_measurement = description.unit
-        self._attr_device_class = description.device_class
-        self._attr_state_class = description.state_class
-
-    @property
-    def native_value(self) -> Any:
-        source = (
-            self.coordinator.data.get("vehicles", {})
-            if self.entity_description.source_key == "vehicle"
-            else self.coordinator.data.get(self.entity_description.source_key, {})
-        )
-        metrics = (
-            expand_metrics(source.get(self._vin))
-            if source.get(self._vin) is not None
-            else {}
-        )
-        return metrics.get(self.entity_description.key)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        attrs: dict[str, Any] = {
-            "vin": self._vin,
-            "category": self.entity_description.category,
-            "field": self.entity_description.key,
-        }
-        return attrs
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._vin)},
-            name=get_vehicle_display(self._vehicle),
-            manufacturer=self._vehicle.brand_name or "BYD",
-            model=self._vehicle.model_name or None,
-        )
-
-
-class BydMetricSensor(CoordinatorEntity, SensorEntity):
-    """Representation of a BYD vehicle metric."""
-
-    def __init__(
-        self,
-        coordinator: BydDataUpdateCoordinator | BydGpsUpdateCoordinator,
-        vin: str,
-        vehicle: Any,
-        category: str,
-        field: str,
-        source_key: str,
-    ) -> None:
-        super().__init__(coordinator)
         self._vin = vin
         self._vehicle = vehicle
-        self._category = category
-        self._field = field
-        self._source_key = source_key
-        self._attr_unique_id = f"{vin}_{category}_{field}"
-        self._attr_name = f"{get_vehicle_display(vehicle)} {category} {field}".replace(
-            "_", " "
-        )
+        self._attr_unique_id = f"{vin}_{description.source}_{description.key}"
+
+        # Auto-disable sensors that return no data on first fetch.
+        # If the description already disables the entity we leave it alone.
+        # Otherwise we probe the initial data: if the car didn't return a
+        # usable value the sensor is disabled so it stays out of the way.
+        if description.entity_registry_enabled_default is not False:
+            if self._resolve_value() is None:
+                self._attr_entity_registry_enabled_default = False
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _get_source_obj(self) -> Any | None:
+        """Return the model object for this sensor's source."""
+        source_map = self.coordinator.data.get(self.entity_description.source, {})
+        return source_map.get(self._vin)
+
+    def _resolve_value(self) -> Any:
+        """Extract the current value using the description's extraction logic."""
+        obj = self._get_source_obj()
+        if obj is None:
+            return None
+        if self.entity_description.value_fn is not None:
+            return self.entity_description.value_fn(obj)
+        attr = self.entity_description.attr_key or self.entity_description.key
+        value = getattr(obj, attr, None)
+        if hasattr(value, "value") and isinstance(value.value, int):
+            return value.value
+        return value
+
+    # ------------------------------------------------------------------
+    # Entity properties
+    # ------------------------------------------------------------------
+
+    @property
+    def available(self) -> bool:
+        """Return True when the coordinator has data for this source."""
+        return super().available and self._get_source_obj() is not None
 
     @property
     def native_value(self) -> Any:
-        if self._source_key == "vehicle":
-            source = self.coordinator.data.get("vehicles", {})
-        else:
-            source = self.coordinator.data.get(self._source_key, {})
-        metrics = (
-            expand_metrics(source.get(self._vin))
-            if source.get(self._vin) is not None
-            else {}
-        )
-        return metrics.get(self._field)
-
-    @property
-    def native_unit_of_measurement(self) -> str | None:
-        for hint, unit in _UNIT_HINTS.items():
-            if hint in self._field:
-                return unit
-        return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        if self._source_key == "vehicle":
-            source = self.coordinator.data.get("vehicles", {})
-        else:
-            source = self.coordinator.data.get(self._source_key, {})
-        raw = (
-            extract_raw(source.get(self._vin))
-            if source.get(self._vin) is not None
-            else None
-        )
-        attrs: dict[str, Any] = {
-            "vin": self._vin,
-            "category": self._category,
-            "field": self._field,
-        }
-        if raw:
-            attrs["raw"] = raw
-        return attrs
+        """Return the sensor value."""
+        return self._resolve_value()
 
     @property
     def device_info(self) -> DeviceInfo:
+        """Return device info for this sensor."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._vin)},
             name=get_vehicle_display(self._vehicle),
-            manufacturer=self._vehicle.brand_name or "BYD",
-            model=self._vehicle.model_name or None,
+            manufacturer=getattr(self._vehicle, "brand_name", None) or "BYD",
+            model=getattr(self._vehicle, "model_name", None),
         )

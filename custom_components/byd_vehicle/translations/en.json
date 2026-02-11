@@ -8,6 +8,7 @@
           "base_url": "Region",
           "username": "Username",
           "password": "Password",
+          "control_pin": "Control PIN (optional, 6-digit)",
           "country_code": "Country",
           "poll_interval": "Polling interval (seconds)",
           "gps_poll_interval": "GPS polling interval (seconds)",
@@ -21,6 +22,9 @@
       "cannot_connect": "Failed to connect",
       "invalid_auth": "Invalid authentication",
       "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This account is already configured"
     }
   },
   "options": {

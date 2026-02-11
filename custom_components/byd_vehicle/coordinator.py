@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import dataclasses
 import logging
 from datetime import timedelta
 from typing import Any
@@ -19,12 +18,14 @@ from pybyd import (
     BydTransportError,
     RemoteControlResult,
 )
-from pybyd.config import BydConfig
+from pybyd.config import BydConfig, DeviceProfile
 from pybyd.models.vehicle import Vehicle
 
 from .const import (
     CONF_BASE_URL,
+    CONF_CONTROL_PIN,
     CONF_COUNTRY_CODE,
+    CONF_DEVICE_PROFILE,
     CONF_LANGUAGE,
     DEFAULT_LANGUAGE,
     DOMAIN,
@@ -37,46 +38,6 @@ def _get_vehicle_name(vehicle: Vehicle) -> str:
     return vehicle.auto_alias or vehicle.model_name or vehicle.vin
 
 
-def _dataclass_to_dict(value: Any) -> dict[str, Any]:
-    if dataclasses.is_dataclass(value) and not isinstance(value, type):
-        data = dataclasses.asdict(value)
-        data.pop("raw", None)
-        return data
-    if isinstance(value, dict):
-        return {k: v for k, v in value.items() if k != "raw"}
-    if hasattr(value, "__dict__"):
-        data = dict(value.__dict__)
-        data.pop("raw", None)
-        return data
-    return {"value": value}
-
-
-def extract_raw(value: Any) -> dict[str, Any] | None:
-    """Return raw payload if available on a model or dict."""
-    if dataclasses.is_dataclass(value) and hasattr(value, "raw"):
-        raw = getattr(value, "raw")
-        return raw if isinstance(raw, dict) else None
-    if isinstance(value, dict):
-        raw = value.get("raw")
-        return raw if isinstance(raw, dict) else None
-    if hasattr(value, "raw"):
-        raw = getattr(value, "raw")
-        return raw if isinstance(raw, dict) else None
-    return None
-
-
-def expand_metrics(value: Any) -> dict[str, Any]:
-    """Merge dataclass fields with raw payload keys."""
-    data = _dataclass_to_dict(value)
-    raw = extract_raw(value)
-    if raw:
-        for key, val in raw.items():
-            if key in data:
-                continue
-            data[f"raw_{key}"] = val
-    return data
-
-
 class BydApi:
     """Thin wrapper around the pybyd client."""
 
@@ -85,6 +46,7 @@ class BydApi:
         self._entry = entry
         self._session = session
         time_zone = hass.config.time_zone or "UTC"
+        device = DeviceProfile(**entry.data[CONF_DEVICE_PROFILE])
         self._config = BydConfig(
             username=entry.data["username"],
             password=entry.data["password"],
@@ -92,6 +54,8 @@ class BydApi:
             country_code=entry.data.get(CONF_COUNTRY_CODE, "NL"),
             language=entry.data.get(CONF_LANGUAGE, DEFAULT_LANGUAGE),
             time_zone=time_zone,
+            device=device,
+            control_pin=entry.data.get(CONF_CONTROL_PIN) or None,
         )
         self._last_remote_results: dict[tuple[str, str], dict[str, Any]] = {}
 
@@ -297,8 +261,3 @@ class BydGpsUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 def get_vehicle_display(vehicle: Vehicle) -> str:
     """Return a friendly name for a vehicle."""
     return _get_vehicle_name(vehicle)
-
-
-def flatten_metrics(value: Any) -> dict[str, Any]:
-    """Flatten a dataclass-like model into a plain dict."""
-    return _dataclass_to_dict(value)

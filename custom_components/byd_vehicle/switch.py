@@ -12,8 +12,11 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from pybyd.models.hvac import HvacStatus
+
 from .const import DOMAIN
 from .coordinator import BydApi, BydDataUpdateCoordinator, get_vehicle_display
+from .select import _gather_seat_climate_state
 
 
 async def async_setup_entry(
@@ -21,32 +24,27 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
+    """Set up BYD switches from a config entry."""
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator: BydDataUpdateCoordinator = data["coordinator"]
     api: BydApi = data["api"]
 
     entities: list[SwitchEntity] = []
-
     vehicle_map = coordinator.data.get("vehicles", {})
+
     for vin, vehicle in vehicle_map.items():
-        entities.append(
-            BydMomentarySwitch(coordinator, api, vin, vehicle, "flash_lights")
-        )
-        entities.append(BydMomentarySwitch(coordinator, api, vin, vehicle, "honk_horn"))
-        entities.append(
-            BydMomentarySwitch(coordinator, api, vin, vehicle, "open_trunk")
-        )
-        entities.append(
-            BydMomentarySwitch(coordinator, api, vin, vehicle, "close_windows")
-        )
+        entities.append(BydBatteryHeatSwitch(coordinator, api, vin, vehicle))
+        entities.append(BydSteeringWheelHeatSwitch(coordinator, api, vin, vehicle))
 
     async_add_entities(entities)
 
 
-class BydMomentarySwitch(CoordinatorEntity, SwitchEntity):
-    """Representation of a momentary BYD remote command."""
+class BydBatteryHeatSwitch(CoordinatorEntity, SwitchEntity):
+    """Representation of the BYD battery heat toggle."""
 
-    _attr_assumed_state = True
+    _attr_has_entity_name = True
+    _attr_name = "Battery heat"
+    _attr_icon = "mdi:heat-wave"
 
     def __init__(
         self,
@@ -54,43 +52,187 @@ class BydMomentarySwitch(CoordinatorEntity, SwitchEntity):
         api: BydApi,
         vin: str,
         vehicle: Any,
-        command: str,
     ) -> None:
+        """Initialize the switch."""
         super().__init__(coordinator)
         self._api = api
         self._vin = vin
         self._vehicle = vehicle
-        self._command = command
-        self._attr_unique_id = f"{vin}_{command}"
-        self._attr_name = f"{get_vehicle_display(vehicle)} {command}".replace("_", " ")
+        self._attr_unique_id = f"{vin}_switch_battery_heat"
+        self._last_state: bool | None = None
 
     @property
-    def is_on(self) -> bool:
-        return False
+    def available(self) -> bool:
+        """Available when coordinator has realtime data."""
+        if not super().available:
+            return False
+        return self.coordinator.data.get("realtime", {}).get(self._vin) is not None
 
-    async def async_turn_on(self, **_: Any) -> None:
+    @property
+    def is_on(self) -> bool | None:
+        """Return whether battery heat is on."""
+        realtime_map = self.coordinator.data.get("realtime", {})
+        realtime = realtime_map.get(self._vin)
+        if realtime is not None:
+            val = getattr(realtime, "battery_heat_state", None)
+            if val is not None:
+                return bool(val)
+        return self._last_state
+
+    @property
+    def assumed_state(self) -> bool:
+        """Return True if we have no realtime data."""
+        realtime_map = self.coordinator.data.get("realtime", {})
+        realtime = realtime_map.get(self._vin)
+        if realtime is not None:
+            return getattr(realtime, "battery_heat_state", None) is None
+        return True
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on battery heat."""
+
         async def _call(client: Any) -> Any:
-            method = getattr(client, self._command, None)
-            if method is None:
-                raise HomeAssistantError(f"Unknown command: {self._command}")
-            return await method(self._vin)
+            return await client.set_battery_heat(self._vin, on=True)
 
         try:
-            await self._api.async_call(_call, vin=self._vin, command=self._command)
+            self._last_state = True
+            await self._api.async_call(_call, vin=self._vin, command="battery_heat_on")
         except Exception as exc:  # noqa: BLE001
+            self._last_state = None
             raise HomeAssistantError(str(exc)) from exc
-
         self.async_write_ha_state()
 
-    async def async_turn_off(self, **_: Any) -> None:
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off battery heat."""
+
+        async def _call(client: Any) -> Any:
+            return await client.set_battery_heat(self._vin, on=False)
+
+        try:
+            self._last_state = False
+            await self._api.async_call(_call, vin=self._vin, command="battery_heat_off")
+        except Exception as exc:  # noqa: BLE001
+            self._last_state = None
+            raise HomeAssistantError(str(exc)) from exc
         self.async_write_ha_state()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        attrs: dict[str, Any] = {"vin": self._vin, "command": self._command}
-        last_result = self._api.get_last_remote_result(self._vin, self._command)
-        if last_result:
-            attrs["last_remote_result"] = last_result
+        """Return extra state attributes."""
+        attrs: dict[str, Any] = {"vin": self._vin}
+        for cmd in ("battery_heat_on", "battery_heat_off"):
+            last_result = self._api.get_last_remote_result(self._vin, cmd)
+            if last_result:
+                attrs["last_remote_result"] = last_result
+                break
+        return attrs
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info for this switch."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._vin)},
+            name=get_vehicle_display(self._vehicle),
+            manufacturer=getattr(self._vehicle, "brand_name", None) or "BYD",
+            model=getattr(self._vehicle, "model_name", None),
+        )
+
+
+class BydSteeringWheelHeatSwitch(CoordinatorEntity, SwitchEntity):
+    """Representation of the BYD steering wheel heat toggle."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Steering wheel heating"
+    _attr_icon = "mdi:steering"
+
+    def __init__(
+        self,
+        coordinator: BydDataUpdateCoordinator,
+        api: BydApi,
+        vin: str,
+        vehicle: Any,
+    ) -> None:
+        """Initialize the switch."""
+        super().__init__(coordinator)
+        self._api = api
+        self._vin = vin
+        self._vehicle = vehicle
+        self._attr_unique_id = f"{vin}_switch_steering_wheel_heat"
+        self._last_state: bool | None = None
+
+    def _get_hvac_status(self) -> HvacStatus | None:
+        hvac_map = self.coordinator.data.get("hvac", {})
+        hvac = hvac_map.get(self._vin)
+        return hvac if isinstance(hvac, HvacStatus) else None
+
+    def _get_realtime(self) -> Any | None:
+        return self.coordinator.data.get("realtime", {}).get(self._vin)
+
+    @property
+    def available(self) -> bool:
+        if not super().available:
+            return False
+        return self._get_hvac_status() is not None or self._get_realtime() is not None
+
+    @property
+    def is_on(self) -> bool | None:
+        hvac = self._get_hvac_status()
+        if hvac is not None:
+            val = hvac.steering_wheel_heat_state
+            if val is not None:
+                return bool(val)
+        realtime = self._get_realtime()
+        if realtime is not None:
+            val = getattr(realtime, "steering_wheel_heat_state", None)
+            if val is not None:
+                return bool(val)
+        return self._last_state
+
+    @property
+    def assumed_state(self) -> bool:
+        hvac = self._get_hvac_status()
+        if hvac is not None:
+            return hvac.steering_wheel_heat_state is None
+        realtime = self._get_realtime()
+        if realtime is not None:
+            return getattr(realtime, "steering_wheel_heat_state", None) is None
+        return True
+
+    async def _set_steering_wheel_heat(self, on: bool) -> None:
+        """Send seat climate command with steering wheel heat toggled."""
+        hvac = self._get_hvac_status()
+        realtime = self._get_realtime()
+        kwargs = _gather_seat_climate_state(hvac, realtime)
+        kwargs["steering_wheel_heat"] = 1 if on else 0
+
+        async def _call(client: Any) -> Any:
+            return await client.set_seat_climate(self._vin, **kwargs)
+
+        cmd = "steering_wheel_heat_on" if on else "steering_wheel_heat_off"
+        try:
+            self._last_state = on
+            await self._api.async_call(_call, vin=self._vin, command=cmd)
+        except Exception as exc:  # noqa: BLE001
+            self._last_state = None
+            raise HomeAssistantError(str(exc)) from exc
+        self.async_write_ha_state()
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on steering wheel heating."""
+        await self._set_steering_wheel_heat(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off steering wheel heating."""
+        await self._set_steering_wheel_heat(False)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        attrs: dict[str, Any] = {"vin": self._vin}
+        for cmd in ("steering_wheel_heat_on", "steering_wheel_heat_off"):
+            last_result = self._api.get_last_remote_result(self._vin, cmd)
+            if last_result:
+                attrs["last_remote_result"] = last_result
+                break
         return attrs
 
     @property
@@ -98,6 +240,6 @@ class BydMomentarySwitch(CoordinatorEntity, SwitchEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self._vin)},
             name=get_vehicle_display(self._vehicle),
-            manufacturer=self._vehicle.brand_name or "BYD",
-            model=self._vehicle.model_name or None,
+            manufacturer=getattr(self._vehicle, "brand_name", None) or "BYD",
+            model=getattr(self._vehicle, "model_name", None),
         )
