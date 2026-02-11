@@ -39,7 +39,13 @@ class BydLock(CoordinatorEntity, LockEntity):
 
     _attr_assumed_state = True
 
-    def __init__(self, coordinator: BydDataUpdateCoordinator, api: BydApi, vin: str, vehicle: Any) -> None:
+    def __init__(
+        self,
+        coordinator: BydDataUpdateCoordinator,
+        api: BydApi,
+        vin: str,
+        vehicle: Any,
+    ) -> None:
         super().__init__(coordinator)
         self._api = api
         self._vin = vin

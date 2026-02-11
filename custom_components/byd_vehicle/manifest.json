@@ -4,8 +4,8 @@
   "codeowners": ["@jkaberg"],
   "config_flow": true,
   "documentation": "https://github.com/jkaberg/hass-byd",
-  "issue_tracker": "https://github.com/jkaberg/hass-byd/issues",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/jkaberg/hass-byd/issues",
   "requirements": ["pybyd==0.1.0"],
   "version": "0.1.0"
 }

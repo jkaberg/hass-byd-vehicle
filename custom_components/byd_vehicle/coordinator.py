@@ -11,12 +11,17 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
 from pybyd import BydApiError, BydAuthenticationError, BydClient, BydTransportError
 from pybyd.config import BydConfig
 from pybyd.models.vehicle import Vehicle
 
-from .const import CONF_BASE_URL, CONF_COUNTRY_CODE, CONF_LANGUAGE, DEFAULT_LANGUAGE, DOMAIN
+from .const import (
+    CONF_BASE_URL,
+    CONF_COUNTRY_CODE,
+    CONF_LANGUAGE,
+    DEFAULT_LANGUAGE,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +31,7 @@ def _get_vehicle_name(vehicle: Vehicle) -> str:
 
 
 def _dataclass_to_dict(value: Any) -> dict[str, Any]:
-    if dataclasses.is_dataclass(value):
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
         data = dataclasses.asdict(value)
         data.pop("raw", None)
         return data
@@ -123,7 +128,7 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             realtime_map: dict[str, Any] = {}
             energy_map: dict[str, Any] = {}
             for result in results:
-                if isinstance(result, Exception):
+                if isinstance(result, BaseException):
                     _LOGGER.warning("Telemetry update failed: %s", result)
                     continue
                 vin, realtime, energy = result
@@ -165,7 +170,7 @@ class BydGpsUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             gps_map: dict[str, Any] = {}
             for result in results:
-                if isinstance(result, Exception):
+                if isinstance(result, BaseException):
                     _LOGGER.warning("GPS update failed: %s", result)
                     continue
                 vin, gps = result

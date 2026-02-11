@@ -29,7 +29,9 @@ async def async_setup_entry(
 
     vehicle_map = coordinator.data.get("vehicles", {})
     for vin, vehicle in vehicle_map.items():
-        entities.append(BydMomentarySwitch(coordinator, api, vin, vehicle, "flash_lights"))
+        entities.append(
+            BydMomentarySwitch(coordinator, api, vin, vehicle, "flash_lights")
+        )
         entities.append(BydMomentarySwitch(coordinator, api, vin, vehicle, "honk_horn"))
 
     async_add_entities(entities)

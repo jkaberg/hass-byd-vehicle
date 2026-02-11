@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.config_entries import ConfigEntry
 
 from .const import DOMAIN
 from .coordinator import (
@@ -20,7 +20,6 @@ from .coordinator import (
     extract_raw,
     get_vehicle_display,
 )
-
 
 _UNIT_HINTS: dict[str, str] = {
     "percent": PERCENTAGE,
@@ -53,7 +52,9 @@ async def async_setup_entry(
             ("energy", "energy", coordinator.data.get("energy", {})),
             ("gps", "gps", gps_coordinator.data.get("gps", {})),
         ):
-            metrics = expand_metrics(source.get(vin)) if source.get(vin) is not None else {}
+            metrics = (
+                expand_metrics(source.get(vin)) if source.get(vin) is not None else {}
+            )
             for field in metrics:
                 entities.append(
                     BydMetricSensor(
@@ -88,7 +89,9 @@ class BydMetricSensor(CoordinatorEntity, SensorEntity):
         self._field = field
         self._source_key = source_key
         self._attr_unique_id = f"{vin}_{category}_{field}"
-        self._attr_name = f"{get_vehicle_display(vehicle)} {category} {field}".replace("_", " ")
+        self._attr_name = f"{get_vehicle_display(vehicle)} {category} {field}".replace(
+            "_", " "
+        )
 
     @property
     def native_value(self) -> Any:
@@ -96,7 +99,11 @@ class BydMetricSensor(CoordinatorEntity, SensorEntity):
             source = self.coordinator.data.get("vehicles", {})
         else:
             source = self.coordinator.data.get(self._source_key, {})
-        metrics = expand_metrics(source.get(self._vin)) if source.get(self._vin) is not None else {}
+        metrics = (
+            expand_metrics(source.get(self._vin))
+            if source.get(self._vin) is not None
+            else {}
+        )
         return metrics.get(self._field)
 
     @property
@@ -112,7 +119,11 @@ class BydMetricSensor(CoordinatorEntity, SensorEntity):
             source = self.coordinator.data.get("vehicles", {})
         else:
             source = self.coordinator.data.get(self._source_key, {})
-        raw = extract_raw(source.get(self._vin)) if source.get(self._vin) is not None else None
+        raw = (
+            extract_raw(source.get(self._vin))
+            if source.get(self._vin) is not None
+            else None
+        )
         attrs: dict[str, Any] = {
             "vin": self._vin,
             "category": self._category,

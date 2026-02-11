@@ -35,7 +35,9 @@ async def async_setup_entry(
 class BydDeviceTracker(CoordinatorEntity, TrackerEntity):
     """Representation of a BYD vehicle tracker."""
 
-    def __init__(self, coordinator: BydGpsUpdateCoordinator, vin: str, vehicle: Any) -> None:
+    def __init__(
+        self, coordinator: BydGpsUpdateCoordinator, vin: str, vehicle: Any
+    ) -> None:
         super().__init__(coordinator)
         self._vin = vin
         self._vehicle = vehicle

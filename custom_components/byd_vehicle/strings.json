@@ -8,7 +8,7 @@
           "base_url": "Region",
           "username": "Username",
           "password": "Password",
-          "country_code": "Country code",
+          "country_code": "Country",
           "poll_interval": "Polling interval (seconds)",
           "gps_poll_interval": "GPS polling interval (seconds)"
         }
