@@ -54,6 +54,7 @@ COUNTRY_OPTIONS: dict[str, tuple[str, str]] = {
     "France": ("FR", "fr"),
     "Germany": ("DE", "de"),
     "Hong Kong": ("HK", "zh"),
+    "Hungary": ("HU", "hu"),
     "India": ("IN", "en"),
     "Indonesia": ("ID", "id"),
     "Japan": ("JP", "ja"),
