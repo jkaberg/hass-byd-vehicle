@@ -43,7 +43,6 @@ class BydBatteryHeatSwitch(CoordinatorEntity, SwitchEntity):
     """Representation of the BYD battery heat toggle."""
 
     _attr_has_entity_name = True
-    _attr_name = None
     _attr_translation_key = "battery_heat"
     _attr_icon = "mdi:heat-wave"
 
@@ -138,6 +137,8 @@ class BydBatteryHeatSwitch(CoordinatorEntity, SwitchEntity):
             name=get_vehicle_display(self._vehicle),
             manufacturer=getattr(self._vehicle, "brand_name", None) or "BYD",
             model=getattr(self._vehicle, "model_name", None),
+            serial_number=self._vin,
+            hw_version=getattr(self._vehicle, "tbox_version", None) or None,
         )
 
 
@@ -145,7 +146,6 @@ class BydCarOnSwitch(CoordinatorEntity, SwitchEntity):
     """Representation of a BYD car-on switch via climate control."""
 
     _attr_has_entity_name = True
-    _attr_name = None
     _attr_translation_key = "car_on"
     _attr_icon = "mdi:car"
     _TEMP_21C_SCALE = 7
@@ -244,6 +244,8 @@ class BydCarOnSwitch(CoordinatorEntity, SwitchEntity):
             name=get_vehicle_display(self._vehicle),
             manufacturer=getattr(self._vehicle, "brand_name", None) or "BYD",
             model=getattr(self._vehicle, "model_name", None),
+            serial_number=self._vin,
+            hw_version=getattr(self._vehicle, "tbox_version", None) or None,
         )
 
 
@@ -251,7 +253,6 @@ class BydSteeringWheelHeatSwitch(CoordinatorEntity, SwitchEntity):
     """Representation of the BYD steering wheel heat toggle."""
 
     _attr_has_entity_name = True
-    _attr_name = None
     _attr_translation_key = "steering_wheel_heat"
     _attr_icon = "mdi:steering"
 
@@ -356,4 +357,6 @@ class BydSteeringWheelHeatSwitch(CoordinatorEntity, SwitchEntity):
             name=get_vehicle_display(self._vehicle),
             manufacturer=getattr(self._vehicle, "brand_name", None) or "BYD",
             model=getattr(self._vehicle, "model_name", None),
+            serial_number=self._vin,
+            hw_version=getattr(self._vehicle, "tbox_version", None) or None,
         )

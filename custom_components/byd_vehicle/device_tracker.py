@@ -36,7 +36,6 @@ class BydDeviceTracker(CoordinatorEntity, TrackerEntity):
     """Representation of a BYD vehicle tracker."""
 
     _attr_has_entity_name = True
-    _attr_name = None
     _attr_translation_key = "location"
 
     def __init__(
@@ -85,4 +84,6 @@ class BydDeviceTracker(CoordinatorEntity, TrackerEntity):
             name=get_vehicle_display(self._vehicle),
             manufacturer=getattr(self._vehicle, "brand_name", None) or "BYD",
             model=getattr(self._vehicle, "model_name", None),
+            serial_number=self._vin,
+            hw_version=getattr(self._vehicle, "tbox_version", None) or None,
         )

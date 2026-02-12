@@ -40,7 +40,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _get_vehicle_name(vehicle: Vehicle) -> str:
-    return vehicle.auto_alias or vehicle.model_name or vehicle.vin
+    return vehicle.model_name or vehicle.vin
 
 
 class BydApi:

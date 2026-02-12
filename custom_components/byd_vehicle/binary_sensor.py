@@ -356,4 +356,6 @@ class BydBinarySensor(CoordinatorEntity, BinarySensorEntity):
             name=get_vehicle_display(self._vehicle),
             manufacturer=getattr(self._vehicle, "brand_name", None) or "BYD",
             model=getattr(self._vehicle, "model_name", None),
+            serial_number=self._vin,
+            hw_version=getattr(self._vehicle, "tbox_version", None) or None,
         )

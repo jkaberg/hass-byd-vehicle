@@ -47,9 +47,9 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
     _TEMP_OFFSET_C = 14
     _PRESET_MAX_HEAT = "max_heat"
     _PRESET_MAX_COOL = "max_cool"
+    _DEFAULT_TEMP_C = 21.0
 
     _attr_has_entity_name = True
-    _attr_name = None
     _attr_translation_key = "climate"
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT_COOL]
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
@@ -154,7 +154,7 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set HVAC mode (on/off)."""
-        temp = self._pending_target_temp or self.target_temperature
+        temp = self._pending_target_temp or self.target_temperature or self._DEFAULT_TEMP_C
 
         async def _call(client: Any) -> Any:
             if hvac_mode == HVACMode.OFF:
@@ -283,4 +283,6 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
             name=get_vehicle_display(self._vehicle),
             manufacturer=getattr(self._vehicle, "brand_name", None) or "BYD",
             model=getattr(self._vehicle, "model_name", None),
+            serial_number=self._vin,
+            hw_version=getattr(self._vehicle, "tbox_version", None) or None,
         )
