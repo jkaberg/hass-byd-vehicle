@@ -12,7 +12,7 @@
           "country_code": "País",
           "poll_interval": "Intervalo de sondeo (segundos)",
           "gps_poll_interval": "GPS intervalo de sondeo (segundos)",
-          "smart_gps_polling": "Sondeo inteligente GPS",
+          "smart_gps_polling": "Sondeo GPS inteligente",
           "gps_active_interval": "GPS intervalo activo (segundos)",
           "gps_inactive_interval": "GPS intervalo inactivo (segundos)"
         }
@@ -37,7 +37,7 @@
         "data": {
           "poll_interval": "Intervalo de sondeo (segundos)",
           "gps_poll_interval": "GPS intervalo de sondeo (segundos)",
-          "smart_gps_polling": "Sondeo inteligente GPS",
+          "smart_gps_polling": "Sondeo GPS inteligente",
           "gps_active_interval": "GPS intervalo activo (segundos)",
           "gps_inactive_interval": "GPS intervalo inactivo (segundos)"
         }
@@ -50,7 +50,7 @@
         "name": "Nivel de batería"
       },
       "endurance_mileage": {
-        "name": "Rango"
+        "name": "Autonomía"
       },
       "total_mileage": {
         "name": "Cuentakilómetros"
@@ -62,19 +62,19 @@
         "name": "Temperatura de la cabina"
       },
       "left_front_tire_pressure": {
-        "name": "Presión del neumático delantero izquierdo"
+        "name": "Presión neumático delantero izquierdo"
       },
       "right_front_tire_pressure": {
-        "name": "Presión del neumático delantero derecho"
+        "name": "Presión neumático delantero derecho"
       },
       "left_rear_tire_pressure": {
-        "name": "Presión del neumático trasero izquierdo"
+        "name": "Presión neumático trasero izquierdo"
       },
       "right_rear_tire_pressure": {
-        "name": "Presión del neumático trasero derecho"
+        "name": "Presión neumático trasero derecho"
       },
       "soc": {
-        "name": "Cargando SOC"
+        "name": "Nivel de carga (SoC)"
       },
       "time_to_full": {
         "name": "Es hora de cargar por completo"
@@ -95,10 +95,10 @@
         "name": "Nivel de batería"
       },
       "ev_endurance": {
-        "name": "EV resistencia"
+        "name": "Autonomía eléctrica"
       },
       "endurance_mileage_v2": {
-        "name": "Gama V2"
+        "name": "Autonomía V2"
       },
       "total_mileage_v2": {
         "name": "Odómetro V2"
@@ -116,16 +116,16 @@
         "name": "Estado de espera de carga"
       },
       "full_hour": {
-        "name": "Horas a tope"
+        "name": "Horas para carga completa"
       },
       "full_minute": {
-        "name": "Minutos para completar"
+        "name": "Minutos para carga completa"
       },
       "charge_remaining_hours": {
-        "name": "Cargar horas restantes"
+        "name": "Horas de carga restantes"
       },
       "charge_remaining_minutes": {
-        "name": "Cargar minutos restantes"
+        "name": "Minutos de carga restantes"
       },
       "booking_charge_state": {
         "name": "Carga programada"
@@ -155,13 +155,13 @@
         "name": "Fuga rápida de neumáticos"
       },
       "total_power": {
-        "name": "poder total"
+        "name": "Potencia total"
       },
       "nearest_energy_consumption": {
-        "name": "Consumo de energía reciente"
+        "name": "Consumo reciente"
       },
       "recent_50km_energy": {
-        "name": "Energía reciente de 50 km"
+        "name": "Consumo últimos 50km"
       },
       "oil_endurance": {
         "name": "Rango de combustible"
@@ -188,7 +188,7 @@
         "name": "ABS advertencia"
       },
       "svs": {
-        "name": "Vehículo de servicio pronto"
+        "name": "Servicio requerido pronto"
       },
       "srs": {
         "name": "Advertencia de bolsa de aire"
@@ -215,7 +215,7 @@
         "name": "Estado de conexión del cargador"
       },
       "charging_update_time": {
-        "name": "Cargando la última actualización"
+        "name": "Última actualización de carga"
       },
       "electricity_consumption": {
         "name": "Consumo de electricidad"
@@ -238,13 +238,13 @@
         "name": "Cargando"
       },
       "is_any_door_open": {
-        "name": "puertas"
+        "name": "Puertas abiertas"
       },
       "is_any_window_open": {
-        "name": "ventanas"
+        "name": "Ventanas abiertas"
       },
       "is_locked": {
-        "name": "bloqueado"
+        "name": "Bloqueado"
       },
       "charger_connected": {
         "name": "Cargador conectado"
@@ -265,7 +265,7 @@
         "name": "Puerta trasera derecha"
       },
       "trunk_lid": {
-        "name": "Trompa"
+        "name": "Maletero"
       },
       "sliding_door": {
         "name": "Puerta corrediza"
@@ -286,7 +286,7 @@
         "name": "ventana trasera derecha"
       },
       "skylight": {
-        "name": "Claraboya"
+        "name": "Techo solar"
       },
       "left_front_door_lock": {
         "name": "Cerradura de puerta delantera izquierda"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Calor máximo",
-              "max_cool": "máximo fresco"
+              "max_cool": "Frío máximo"
             }
           }
         }

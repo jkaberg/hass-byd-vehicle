@@ -12,7 +12,7 @@
           "country_code": "国家",
           "poll_interval": "轮询间隔（秒）",
           "gps_poll_interval": "GPS 轮询间隔（秒）",
-          "smart_gps_polling": "智能 GPS 投票",
+          "smart_gps_polling": "智能 GPS 轮询",
           "gps_active_interval": "GPS 活动间隔（秒）",
           "gps_inactive_interval": "GPS 非活动间隔（秒）"
         }
@@ -37,7 +37,7 @@
         "data": {
           "poll_interval": "轮询间隔（秒）",
           "gps_poll_interval": "GPS 轮询间隔（秒）",
-          "smart_gps_polling": "智能 GPS 投票",
+          "smart_gps_polling": "智能 GPS 轮询",
           "gps_active_interval": "GPS 活动间隔（秒）",
           "gps_inactive_interval": "GPS 非活动间隔（秒）"
         }
@@ -89,16 +89,16 @@
         "name": "外部温度"
       },
       "pm": {
-        "name": "__学期0__"
+        "name": "PM2.5"
       },
       "power_battery": {
         "name": "动力电池电量"
       },
       "ev_endurance": {
-        "name": "__第六学期__ 耐力"
+        "name": "电动车续航"
       },
       "endurance_mileage_v2": {
-        "name": "范围 V2"
+        "name": "续航里程 V2"
       },
       "total_mileage_v2": {
         "name": "里程表V2"
@@ -185,7 +185,7 @@
         "name": "电子稳定性"
       },
       "abs_warning": {
-        "name": "__学期7__警告"
+        "name": "ABS 警告"
       },
       "svs": {
         "name": "服务车很快"
@@ -232,7 +232,7 @@
     },
     "binary_sensor": {
       "is_online": {
-        "name": "在线的"
+        "name": "在线"
       },
       "is_charging": {
         "name": "收费"
@@ -241,7 +241,7 @@
         "name": "门"
       },
       "is_any_window_open": {
-        "name": "视窗"
+        "name": "车窗"
       },
       "is_locked": {
         "name": "锁定"
@@ -265,13 +265,13 @@
         "name": "右后门"
       },
       "trunk_lid": {
-        "name": "树干"
+        "name": "后备箱"
       },
       "sliding_door": {
         "name": "推拉门"
       },
       "forehold": {
-        "name": "弗伦克"
+        "name": "前备箱"
       },
       "left_front_window": {
         "name": "左前窗"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "最大热量",
-              "max_cool": "麦克斯酷"
+              "max_cool": "最大制冷"
             }
           }
         }

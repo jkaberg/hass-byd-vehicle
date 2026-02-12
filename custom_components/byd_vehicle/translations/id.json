@@ -232,7 +232,7 @@
     },
     "binary_sensor": {
       "is_online": {
-        "name": "On line"
+        "name": "Online"
       },
       "is_charging": {
         "name": "Mengisi daya"
@@ -265,13 +265,13 @@
         "name": "Pintu kanan belakang"
       },
       "trunk_lid": {
-        "name": "Belalai"
+        "name": "Bagasi"
       },
       "sliding_door": {
         "name": "Pintu geser"
       },
       "forehold": {
-        "name": "bodoh"
+        "name": "Bagasi depan"
       },
       "left_front_window": {
         "name": "Jendela kiri depan"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Panas Maks",
-              "max_cool": "Maks Keren"
+              "max_cool": "Pendinginan maks."
             }
           }
         }

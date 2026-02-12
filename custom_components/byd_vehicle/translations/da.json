@@ -12,7 +12,7 @@
           "country_code": "Land",
           "poll_interval": "Polling-interval (sekunder)",
           "gps_poll_interval": "GPS polling-interval (sekunder)",
-          "smart_gps_polling": "Smart GPS polling",
+          "smart_gps_polling": "Smart GPS-polling",
           "gps_active_interval": "GPS aktivt interval (sekunder)",
           "gps_inactive_interval": "GPS inaktivt interval (sekunder)"
         }
@@ -37,7 +37,7 @@
         "data": {
           "poll_interval": "Polling-interval (sekunder)",
           "gps_poll_interval": "GPS polling-interval (sekunder)",
-          "smart_gps_polling": "Smart GPS polling",
+          "smart_gps_polling": "Smart GPS-polling",
           "gps_active_interval": "GPS aktivt interval (sekunder)",
           "gps_inactive_interval": "GPS inaktivt interval (sekunder)"
         }
@@ -104,7 +104,7 @@
         "name": "Kilometertæller V2"
       },
       "power_gear": {
-        "name": "Gear position"
+        "name": "Gearposition"
       },
       "charging_state": {
         "name": "Opladningstilstand"
@@ -241,7 +241,7 @@
         "name": "Døre"
       },
       "is_any_window_open": {
-        "name": "Windows"
+        "name": "Vinduer"
       },
       "is_locked": {
         "name": "Låst"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Max varme",
-              "max_cool": "Max cool"
+              "max_cool": "Maks køling"
             }
           }
         }

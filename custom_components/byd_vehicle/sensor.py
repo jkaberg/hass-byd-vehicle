@@ -22,6 +22,7 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfTime,
 )
+from pybyd.models.realtime import TirePressureUnit
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -119,12 +120,13 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=_filter_temp,
     ),
-    # Tire pressures
+    # Tire pressures – unit resolved dynamically from tire_press_unit;
+    # kPa is the default because most BYD vehicles report tirePressUnit=3.
     BydSensorDescription(
         key="left_front_tire_pressure",
         name="Front left tire pressure",
         source="realtime",
-        native_unit_of_measurement=UnitOfPressure.BAR,
+        native_unit_of_measurement=UnitOfPressure.KPA,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:car-tire-alert",
@@ -133,7 +135,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         key="right_front_tire_pressure",
         name="Front right tire pressure",
         source="realtime",
-        native_unit_of_measurement=UnitOfPressure.BAR,
+        native_unit_of_measurement=UnitOfPressure.KPA,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:car-tire-alert",
@@ -142,7 +144,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         key="left_rear_tire_pressure",
         name="Rear left tire pressure",
         source="realtime",
-        native_unit_of_measurement=UnitOfPressure.BAR,
+        native_unit_of_measurement=UnitOfPressure.KPA,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:car-tire-alert",
@@ -151,7 +153,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         key="right_rear_tire_pressure",
         name="Rear right tire pressure",
         source="realtime",
-        native_unit_of_measurement=UnitOfPressure.BAR,
+        native_unit_of_measurement=UnitOfPressure.KPA,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:car-tire-alert",
@@ -631,6 +633,20 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
+_TIRE_PRESSURE_KEYS = {
+    "left_front_tire_pressure",
+    "right_front_tire_pressure",
+    "left_rear_tire_pressure",
+    "right_rear_tire_pressure",
+}
+
+_TIRE_UNIT_MAP = {
+    TirePressureUnit.BAR: UnitOfPressure.BAR,
+    TirePressureUnit.PSI: UnitOfPressure.PSI,
+    TirePressureUnit.KPA: UnitOfPressure.KPA,
+}
+
+
 class BydSensor(CoordinatorEntity, SensorEntity):
     """Representation of a BYD vehicle sensor."""
 
@@ -693,6 +709,19 @@ class BydSensor(CoordinatorEntity, SensorEntity):
     def available(self) -> bool:
         """Return True when the coordinator has data for this source."""
         return super().available and self._get_source_obj() is not None
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit; tire pressures resolve dynamically."""
+        desc_unit = self.entity_description.native_unit_of_measurement
+        if self.entity_description.key not in _TIRE_PRESSURE_KEYS:
+            return desc_unit
+        obj = self._get_source_obj()
+        if obj is not None:
+            api_unit = getattr(obj, "tire_press_unit", None)
+            if api_unit is not None:
+                return _TIRE_UNIT_MAP.get(api_unit, desc_unit)
+        return desc_unit
 
     @property
     def native_value(self) -> Any:

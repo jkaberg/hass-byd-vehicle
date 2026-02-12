@@ -12,7 +12,7 @@
           "country_code": "Pays",
           "poll_interval": "Intervalle d'interrogation (secondes)",
           "gps_poll_interval": "GPS intervalle d'interrogation (secondes)",
-          "smart_gps_polling": "Sondage intelligent GPS",
+          "smart_gps_polling": "Interrogation GPS intelligente",
           "gps_active_interval": "GPS intervalle actif (secondes)",
           "gps_inactive_interval": "GPS intervalle d'inactivité (secondes)"
         }
@@ -37,7 +37,7 @@
         "data": {
           "poll_interval": "Intervalle d'interrogation (secondes)",
           "gps_poll_interval": "GPS intervalle d'interrogation (secondes)",
-          "smart_gps_polling": "Sondage intelligent GPS",
+          "smart_gps_polling": "Interrogation GPS intelligente",
           "gps_active_interval": "GPS intervalle actif (secondes)",
           "gps_inactive_interval": "GPS intervalle d'inactivité (secondes)"
         }
@@ -50,7 +50,7 @@
         "name": "Niveau de batterie"
       },
       "endurance_mileage": {
-        "name": "Gamme"
+        "name": "Autonomie"
       },
       "total_mileage": {
         "name": "Odomètre"
@@ -74,7 +74,7 @@
         "name": "Pression pneu arrière droit"
       },
       "soc": {
-        "name": "Chargement SOC"
+        "name": "Niveau de charge (SoC)"
       },
       "time_to_full": {
         "name": "Temps de charge complète"
@@ -95,10 +95,10 @@
         "name": "Niveau de batterie"
       },
       "ev_endurance": {
-        "name": "EV endurance"
+        "name": "Autonomie électrique"
       },
       "endurance_mileage_v2": {
-        "name": "Gamme V2"
+        "name": "Autonomie V2"
       },
       "total_mileage_v2": {
         "name": "Compteur kilométrique V2"
@@ -116,16 +116,16 @@
         "name": "Statut d'attente de facturation"
       },
       "full_hour": {
-        "name": "Heures pleines"
+        "name": "Heures pour charge complète"
       },
       "full_minute": {
-        "name": "Minutes pleines"
+        "name": "Minutes pour charge complète"
       },
       "charge_remaining_hours": {
-        "name": "Facturer les heures restantes"
+        "name": "Heures de charge restantes"
       },
       "charge_remaining_minutes": {
-        "name": "Charger les minutes restantes"
+        "name": "Minutes de charge restantes"
       },
       "booking_charge_state": {
         "name": "Chargement programmé"
@@ -161,7 +161,7 @@
         "name": "Consommation d'énergie récente"
       },
       "recent_50km_energy": {
-        "name": "Énergie récente de 50 km"
+        "name": "Conso. derniers 50km"
       },
       "oil_endurance": {
         "name": "Gamme de carburant"
@@ -188,7 +188,7 @@
         "name": "ABS avertissement"
       },
       "svs": {
-        "name": "Véhicule de service bientôt"
+        "name": "Entretien requis bientôt"
       },
       "srs": {
         "name": "Avertissement d'airbag"
@@ -215,7 +215,7 @@
         "name": "État de connexion du chargeur"
       },
       "charging_update_time": {
-        "name": "Chargement de la dernière mise à jour"
+        "name": "Dernière mise à jour de charge"
       },
       "electricity_consumption": {
         "name": "Consommation d'électricité"
@@ -238,13 +238,13 @@
         "name": "Chargement"
       },
       "is_any_door_open": {
-        "name": "Portes"
+        "name": "Portes ouvertes"
       },
       "is_any_window_open": {
-        "name": "Fenêtres"
+        "name": "Fenêtres ouvertes"
       },
       "is_locked": {
-        "name": "Fermé"
+        "name": "Verrouillé"
       },
       "charger_connected": {
         "name": "Chargeur connecté"
@@ -265,7 +265,7 @@
         "name": "Porte arrière droite"
       },
       "trunk_lid": {
-        "name": "Tronc"
+        "name": "Coffre"
       },
       "sliding_door": {
         "name": "Porte coulissante"
@@ -286,7 +286,7 @@
         "name": "Lunette arrière droite"
       },
       "skylight": {
-        "name": "Lucarne"
+        "name": "Toit ouvrant"
       },
       "left_front_door_lock": {
         "name": "Serrure de porte avant gauche"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Chaleur maximale",
-              "max_cool": "Max Cool"
+              "max_cool": "Refroidissement maximal"
             }
           }
         }

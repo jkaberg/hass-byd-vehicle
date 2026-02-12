@@ -50,7 +50,7 @@
         "name": "Nível da bateria"
       },
       "endurance_mileage": {
-        "name": "Faixa"
+        "name": "Autonomia"
       },
       "total_mileage": {
         "name": "Odômetro"
@@ -74,7 +74,7 @@
         "name": "Pressão do pneu traseiro direito"
       },
       "soc": {
-        "name": "Carregando SOC"
+        "name": "Nível de carga (SoC)"
       },
       "time_to_full": {
         "name": "Hora de carregar totalmente"
@@ -89,16 +89,16 @@
         "name": "Temperatura exterior"
       },
       "pm": {
-        "name": "__TERMO0__"
+        "name": "PM2.5"
       },
       "power_battery": {
         "name": "Nível de energia da bateria"
       },
       "ev_endurance": {
-        "name": "EV resistência"
+        "name": "Autonomia elétrica"
       },
       "endurance_mileage_v2": {
-        "name": "Faixa V2"
+        "name": "Autonomia V2"
       },
       "total_mileage_v2": {
         "name": "Odômetro V2"
@@ -116,16 +116,16 @@
         "name": "Status de espera de cobrança"
       },
       "full_hour": {
-        "name": "Horas para completar"
+        "name": "Horas para carga completa"
       },
       "full_minute": {
-        "name": "Minutos para completar"
+        "name": "Minutos para carga completa"
       },
       "charge_remaining_hours": {
-        "name": "Cobrar horas restantes"
+        "name": "Horas de carga restantes"
       },
       "charge_remaining_minutes": {
-        "name": "Carregar os minutos restantes"
+        "name": "Minutos de carga restantes"
       },
       "booking_charge_state": {
         "name": "Carregamento programado"
@@ -161,7 +161,7 @@
         "name": "Consumo recente de energia"
       },
       "recent_50km_energy": {
-        "name": "Energia recente de 50 km"
+        "name": "Consumo últimos 50km"
       },
       "oil_endurance": {
         "name": "Faixa de combustível"
@@ -188,7 +188,7 @@
         "name": "ABS aviso"
       },
       "svs": {
-        "name": "Veículo de serviço em breve"
+        "name": "Manutenção necessária em breve"
       },
       "srs": {
         "name": "Aviso de airbag"
@@ -215,7 +215,7 @@
         "name": "Estado de conexão do carregador"
       },
       "charging_update_time": {
-        "name": "Carregando a última atualização"
+        "name": "Última atualização de carga"
       },
       "electricity_consumption": {
         "name": "Consumo de eletricidade"
@@ -238,13 +238,13 @@
         "name": "Carregando"
       },
       "is_any_door_open": {
-        "name": "Portas"
+        "name": "Portas abertas"
       },
       "is_any_window_open": {
-        "name": "Windows"
+        "name": "Janelas abertas"
       },
       "is_locked": {
-        "name": "Bloqueado"
+        "name": "Trancado"
       },
       "charger_connected": {
         "name": "Carregador conectado"
@@ -271,7 +271,7 @@
         "name": "Porta deslizante"
       },
       "forehold": {
-        "name": "Fruncado"
+        "name": "Frunk"
       },
       "left_front_window": {
         "name": "Janela frontal esquerda"
@@ -286,7 +286,7 @@
         "name": "Janela traseira direita"
       },
       "skylight": {
-        "name": "Clarabóia"
+        "name": "Teto solar"
       },
       "left_front_door_lock": {
         "name": "Fechadura da porta dianteira esquerda"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Calor máximo",
-              "max_cool": "Máximo legal"
+              "max_cool": "Refrigeração máxima"
             }
           }
         }

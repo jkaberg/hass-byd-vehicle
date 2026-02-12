@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "BYD ga ulaning",
+        "title": "BYD'ga ulaning",
         "description": "BYD hisobingizni sozlang.",
         "data": {
           "base_url": "Mintaqa",
@@ -241,7 +241,7 @@
         "name": "Eshiklar"
       },
       "is_any_window_open": {
-        "name": "Windows"
+        "name": "Oynalar"
       },
       "is_locked": {
         "name": "Qulflangan"
@@ -265,13 +265,13 @@
         "name": "Orqa o'ng eshik"
       },
       "trunk_lid": {
-        "name": "Magistral"
+        "name": "Bagaj"
       },
       "sliding_door": {
         "name": "Sürgülü eshik"
       },
       "forehold": {
-        "name": "Frank"
+        "name": "Old bagaj"
       },
       "left_front_window": {
         "name": "Old chap oyna"
@@ -286,7 +286,7 @@
         "name": "Orqa o'ng oyna"
       },
       "skylight": {
-        "name": "Osmon yoritgichi"
+        "name": "Lyuk"
       },
       "left_front_door_lock": {
         "name": "Old chap eshik qulfi"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Maksimal issiqlik",
-              "max_cool": "Maks salqin"
+              "max_cool": "Maksimal sovutish"
             }
           }
         }

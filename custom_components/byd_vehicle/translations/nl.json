@@ -74,7 +74,7 @@
         "name": "Bandenspanning rechtsachter"
       },
       "soc": {
-        "name": "Opladen SOC"
+        "name": "Laadniveau (SoC)"
       },
       "time_to_full": {
         "name": "Tijd om volledig op te laden"
@@ -95,7 +95,7 @@
         "name": "Vermogen batterijniveau"
       },
       "ev_endurance": {
-        "name": "EV uithoudingsvermogen"
+        "name": "Elektrische actieradius"
       },
       "endurance_mileage_v2": {
         "name": "Bereik V2"
@@ -104,7 +104,7 @@
         "name": "Kilometerteller V2"
       },
       "power_gear": {
-        "name": "Versnelling positie"
+        "name": "Versnellingspositie"
       },
       "charging_state": {
         "name": "Oplaadstatus"
@@ -122,10 +122,10 @@
         "name": "Minuten tot vol"
       },
       "charge_remaining_hours": {
-        "name": "Resterende uren in rekening brengen"
+        "name": "Resterende laadtijd (uren)"
       },
       "charge_remaining_minutes": {
-        "name": "Resterende minuten opladen"
+        "name": "Resterende laadtijd (minuten)"
       },
       "booking_charge_state": {
         "name": "Gepland opladen"
@@ -161,7 +161,7 @@
         "name": "Recent energieverbruik"
       },
       "recent_50km_energy": {
-        "name": "Recente 50km energie"
+        "name": "Verbruik laatste 50km"
       },
       "oil_endurance": {
         "name": "Brandstofbereik"
@@ -188,7 +188,7 @@
         "name": "ABS waarschuwing"
       },
       "svs": {
-        "name": "Binnenkort servicewagen"
+        "name": "Onderhoud vereist"
       },
       "srs": {
         "name": "Airbagwaarschuwing"
@@ -215,7 +215,7 @@
         "name": "Verbindingsstatus oplader"
       },
       "charging_update_time": {
-        "name": "Laatste update opladen"
+        "name": "Laatste laad-update"
       },
       "electricity_consumption": {
         "name": "Elektriciteitsverbruik"
@@ -238,10 +238,10 @@
         "name": "Opladen"
       },
       "is_any_door_open": {
-        "name": "Deuren"
+        "name": "Deuren open"
       },
       "is_any_window_open": {
-        "name": "Ramen"
+        "name": "Ramen open"
       },
       "is_locked": {
         "name": "Vergrendeld"
@@ -286,7 +286,7 @@
         "name": "Rechter achterraam"
       },
       "skylight": {
-        "name": "Dakraam"
+        "name": "Schuifdak"
       },
       "left_front_door_lock": {
         "name": "Deurslot linksvoor"

@@ -98,7 +98,7 @@
         "name": "EV dayanıklılık"
       },
       "endurance_mileage_v2": {
-        "name": "Aralık V2"
+        "name": "Menzil V2"
       },
       "total_mileage_v2": {
         "name": "Kilometre sayacı V2"
@@ -241,7 +241,7 @@
         "name": "Kapılar"
       },
       "is_any_window_open": {
-        "name": "Windows"
+        "name": "Pencereler"
       },
       "is_locked": {
         "name": "Kilitli"
@@ -265,13 +265,13 @@
         "name": "Arka sağ kapı"
       },
       "trunk_lid": {
-        "name": "Gövde"
+        "name": "Bagaj"
       },
       "sliding_door": {
         "name": "Sürgülü kapı"
       },
       "forehold": {
-        "name": "Frank"
+        "name": "Ön bagaj"
       },
       "left_front_window": {
         "name": "Ön sol pencere"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Maksimum Isı",
-              "max_cool": "Maksimum Soğuk"
+              "max_cool": "Maksimum soğutma"
             }
           }
         }

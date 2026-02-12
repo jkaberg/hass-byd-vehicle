@@ -12,7 +12,7 @@
           "country_code": "Land",
           "poll_interval": "Pollingintervall (sekunder)",
           "gps_poll_interval": "GPS avfrågningsintervall (sekunder)",
-          "smart_gps_polling": "Smart GPS polling",
+          "smart_gps_polling": "Smart GPS-pollning",
           "gps_active_interval": "GPS aktivt intervall (sekunder)",
           "gps_inactive_interval": "GPS inaktivt intervall (sekunder)"
         }
@@ -37,7 +37,7 @@
         "data": {
           "poll_interval": "Pollingintervall (sekunder)",
           "gps_poll_interval": "GPS avfrågningsintervall (sekunder)",
-          "smart_gps_polling": "Smart GPS polling",
+          "smart_gps_polling": "Smart GPS-pollning",
           "gps_active_interval": "GPS aktivt intervall (sekunder)",
           "gps_inactive_interval": "GPS inaktivt intervall (sekunder)"
         }
@@ -98,7 +98,7 @@
         "name": "EV uthållighet"
       },
       "endurance_mileage_v2": {
-        "name": "Range V2"
+        "name": "Räckvidd V2"
       },
       "total_mileage_v2": {
         "name": "Vägmätare V2"
@@ -241,7 +241,7 @@
         "name": "Dörrar"
       },
       "is_any_window_open": {
-        "name": "Windows"
+        "name": "Fönster"
       },
       "is_locked": {
         "name": "Låst"
@@ -265,7 +265,7 @@
         "name": "Höger bakdörr"
       },
       "trunk_lid": {
-        "name": "Trunk"
+        "name": "Bagageutrymme"
       },
       "sliding_door": {
         "name": "Skjutdörr"
@@ -350,7 +350,7 @@
         }
       },
       "passenger_seat_ventilation": {
-        "name": "Passenger seat ventilation",
+        "name": "Passagerarsätesventilation",
         "state": {
           "off": "Av",
           "low": "Låg",
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Max värme",
-              "max_cool": "Max Cool"
+              "max_cool": "Max kyla"
             }
           }
         }

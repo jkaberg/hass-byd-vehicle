@@ -232,7 +232,7 @@
     },
     "binary_sensor": {
       "is_online": {
-        "name": "dalam talian"
+        "name": "Dalam talian"
       },
       "is_charging": {
         "name": "Mengecas"
@@ -241,7 +241,7 @@
         "name": "pintu"
       },
       "is_any_window_open": {
-        "name": "Windows"
+        "name": "Tingkap"
       },
       "is_locked": {
         "name": "Terkunci"
@@ -265,7 +265,7 @@
         "name": "Pintu belakang kanan"
       },
       "trunk_lid": {
-        "name": "Batang"
+        "name": "But"
       },
       "sliding_door": {
         "name": "Pintu gelangsar"
@@ -286,7 +286,7 @@
         "name": "Tingkap kanan belakang"
       },
       "skylight": {
-        "name": "Skylight"
+        "name": "Bumbung kaca"
       },
       "left_front_door_lock": {
         "name": "Kunci pintu kiri hadapan"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Haba Maks",
-              "max_cool": "Max Cool"
+              "max_cool": "Sejuk maksimum"
             }
           }
         }

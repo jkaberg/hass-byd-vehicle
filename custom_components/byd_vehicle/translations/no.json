@@ -12,7 +12,7 @@
           "country_code": "Land",
           "poll_interval": "Avstemningsintervall (sekunder)",
           "gps_poll_interval": "GPS pollingintervall (sekunder)",
-          "smart_gps_polling": "Smart GPS polling",
+          "smart_gps_polling": "Smart GPS-spørring",
           "gps_active_interval": "GPS aktivt intervall (sekunder)",
           "gps_inactive_interval": "GPS inaktivt intervall (sekunder)"
         }
@@ -37,7 +37,7 @@
         "data": {
           "poll_interval": "Avstemningsintervall (sekunder)",
           "gps_poll_interval": "GPS pollingintervall (sekunder)",
-          "smart_gps_polling": "Smart GPS polling",
+          "smart_gps_polling": "Smart GPS-spørring",
           "gps_active_interval": "GPS aktivt intervall (sekunder)",
           "gps_inactive_interval": "GPS inaktivt intervall (sekunder)"
         }
@@ -241,7 +241,7 @@
         "name": "Dører"
       },
       "is_any_window_open": {
-        "name": "Windows"
+        "name": "Vinduer"
       },
       "is_locked": {
         "name": "Låst"
@@ -265,7 +265,7 @@
         "name": "Høyre bakdør"
       },
       "trunk_lid": {
-        "name": "Stamme"
+        "name": "Bagasjerom"
       },
       "sliding_door": {
         "name": "Skyvedør"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Maks varme",
-              "max_cool": "Max kult"
+              "max_cool": "Maks kjøling"
             }
           }
         }

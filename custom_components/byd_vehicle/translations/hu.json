@@ -232,7 +232,7 @@
     },
     "binary_sensor": {
       "is_online": {
-        "name": "Online"
+        "name": "Elérhető"
       },
       "is_charging": {
         "name": "Töltés"
@@ -241,7 +241,7 @@
         "name": "Ajtók"
       },
       "is_any_window_open": {
-        "name": "Windows"
+        "name": "Ablakok"
       },
       "is_locked": {
         "name": "Bezárt"
@@ -271,7 +271,7 @@
         "name": "Tolóajtó"
       },
       "forehold": {
-        "name": "Őszinte"
+        "name": "Első csomagtartó"
       },
       "left_front_window": {
         "name": "Bal első ablak"
@@ -407,8 +407,8 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "max_heat": "Max Heat",
-              "max_cool": "Max Cool"
+              "max_heat": "Max. fűtés",
+              "max_cool": "Max. hűtés"
             }
           }
         }

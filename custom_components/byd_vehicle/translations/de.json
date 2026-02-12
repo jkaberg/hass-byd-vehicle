@@ -74,7 +74,7 @@
         "name": "Reifendruck hinten rechts"
       },
       "soc": {
-        "name": "Aufladen SOC"
+        "name": "Ladestand (SoC)"
       },
       "time_to_full": {
         "name": "Zeit zum vollständigen Aufladen"
@@ -95,10 +95,10 @@
         "name": "Akkustand"
       },
       "ev_endurance": {
-        "name": "EV Ausdauer"
+        "name": "Elektrische Reichweite"
       },
       "endurance_mileage_v2": {
-        "name": "Bereich V2"
+        "name": "Reichweite V2"
       },
       "total_mileage_v2": {
         "name": "Kilometerzähler V2"
@@ -122,10 +122,10 @@
         "name": "Minuten zu voll"
       },
       "charge_remaining_hours": {
-        "name": "Verbleibende Stunden aufladen"
+        "name": "Verbleibende Ladezeit (Stunden)"
       },
       "charge_remaining_minutes": {
-        "name": "Verbleibende Minuten aufladen"
+        "name": "Verbleibende Ladezeit (Minuten)"
       },
       "booking_charge_state": {
         "name": "Geplantes Laden"
@@ -161,7 +161,7 @@
         "name": "Aktueller Energieverbrauch"
       },
       "recent_50km_energy": {
-        "name": "Aktuelle 50-km-Energie"
+        "name": "Energieverbrauch (letzte 50km)"
       },
       "oil_endurance": {
         "name": "Kraftstoffreichweite"
@@ -185,10 +185,10 @@
         "name": "Elektronische Stabilität"
       },
       "abs_warning": {
-        "name": "ABS Warnung"
+        "name": "ABS-Warnung"
       },
       "svs": {
-        "name": "Servicefahrzeug bald"
+        "name": "Wartung erforderlich"
       },
       "srs": {
         "name": "Airbagwarnung"
@@ -212,10 +212,10 @@
         "name": "Ladegerätstatus"
       },
       "charger_connection": {
-        "name": "Verbindungsstatus des Ladegeräts"
+        "name": "Ladestecker-Status"
       },
       "charging_update_time": {
-        "name": "Laden Sie das letzte Update herunter"
+        "name": "Letztes Lade-Update"
       },
       "electricity_consumption": {
         "name": "Stromverbrauch"
@@ -238,13 +238,13 @@
         "name": "Aufladen"
       },
       "is_any_door_open": {
-        "name": "Türen"
+        "name": "Türen offen"
       },
       "is_any_window_open": {
-        "name": "Windows"
+        "name": "Fenster offen"
       },
       "is_locked": {
-        "name": "Gesperrt"
+        "name": "Verriegelt"
       },
       "charger_connected": {
         "name": "Ladegerät angeschlossen"
@@ -265,7 +265,7 @@
         "name": "Hintere rechte Tür"
       },
       "trunk_lid": {
-        "name": "Stamm"
+        "name": "Kofferraum"
       },
       "sliding_door": {
         "name": "Schiebetür"
@@ -286,7 +286,7 @@
         "name": "Fenster hinten rechts"
       },
       "skylight": {
-        "name": "Dachfenster"
+        "name": "Schiebedach"
       },
       "left_front_door_lock": {
         "name": "Türschloss vorne links"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Maximale Hitze",
-              "max_cool": "Max Cool"
+              "max_cool": "Maximale Kühlung"
             }
           }
         }

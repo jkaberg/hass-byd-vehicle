@@ -98,7 +98,7 @@
         "name": "EV wytrzymałość"
       },
       "endurance_mileage_v2": {
-        "name": "Seria V2"
+        "name": "Zasięg V2"
       },
       "total_mileage_v2": {
         "name": "Licznik przebiegu V2"
@@ -232,7 +232,7 @@
     },
     "binary_sensor": {
       "is_online": {
-        "name": "W Internecie"
+        "name": "Online"
       },
       "is_charging": {
         "name": "Ładowanie"
@@ -265,7 +265,7 @@
         "name": "Tylne prawe drzwi"
       },
       "trunk_lid": {
-        "name": "Pień"
+        "name": "Bagażnik"
       },
       "sliding_door": {
         "name": "Drzwi przesuwne"
@@ -408,7 +408,7 @@
           "preset_mode": {
             "state": {
               "max_heat": "Maksymalne ciepło",
-              "max_cool": "Maks fajny"
+              "max_cool": "Maks. chłodzenie"
             }
           }
         }
