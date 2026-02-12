@@ -230,6 +230,9 @@
       },
       "refrigerator_door_state": {
         "name": "Puerta del refrigerador"
+      },
+      "last_updated": {
+        "name": "Última actualización"
       }
     },
     "binary_sensor": {

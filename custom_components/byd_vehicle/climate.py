@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import logging
+
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature
 from homeassistant.components.climate.const import HVACMode
 from homeassistant.config_entries import ConfigEntry
@@ -13,10 +15,29 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from pybyd import BydRemoteControlError
 from pybyd.models.hvac import HvacStatus
 
 from .const import CONF_CLIMATE_DURATION, DEFAULT_CLIMATE_DURATION, DOMAIN
 from .coordinator import BydApi, BydDataUpdateCoordinator, get_vehicle_display
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _is_remote_control_failure(exc: BaseException) -> bool:
+    """Return True if *exc* wraps a BydRemoteControlError.
+
+    The coordinator re-raises BydRemoteControlError as UpdateFailed,
+    so we check the entire ``__cause__`` chain.  A remote-control
+    failure means the command was actually sent to the vehicle (and the
+    car likely acted on it) but the cloud reported controlState=2.
+    """
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, BydRemoteControlError):
+            return True
+        current = current.__cause__  # type: ignore[assignment]
+    return False
 
 
 async def async_setup_entry(
@@ -82,6 +103,7 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
         self._last_mode = HVACMode.OFF
         self._last_command: str | None = None
         self._pending_target_temp: float | None = None
+        self._command_pending = False
 
     def _get_hvac_status(self) -> HvacStatus | None:
         hvac_map = self.coordinator.data.get("hvac", {})
@@ -120,6 +142,9 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
 
     @property
     def hvac_mode(self) -> HVACMode:
+        # After a command, prefer optimistic state until coordinator refreshes
+        if self._command_pending:
+            return self._last_mode
         hvac = self._get_hvac_status()
         if hvac is not None:
             return HVACMode.HEAT_COOL if hvac.is_ac_on else HVACMode.OFF
@@ -127,7 +152,7 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
 
     @property
     def assumed_state(self) -> bool:
-        return self._get_hvac_status() is None
+        return self._command_pending or self._get_hvac_status() is None
 
     @property
     def current_temperature(self) -> float | None:
@@ -174,9 +199,17 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
             )
             await self._api.async_call(_call, vin=self._vin, command=self._last_command)
         except Exception as exc:  # noqa: BLE001
-            raise HomeAssistantError(str(exc)) from exc
+            if not _is_remote_control_failure(exc):
+                raise HomeAssistantError(str(exc)) from exc
+            _LOGGER.warning(
+                "Climate %s command sent but cloud reported failure — "
+                "updating state optimistically: %s",
+                self._last_command,
+                exc,
+            )
 
         self._last_mode = hvac_mode
+        self._command_pending = True
         self.async_write_ha_state()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -201,8 +234,15 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
                     _call, vin=self._vin, command=self._last_command
                 )
             except Exception as exc:  # noqa: BLE001
-                raise HomeAssistantError(str(exc)) from exc
+                if not _is_remote_control_failure(exc):
+                    raise HomeAssistantError(str(exc)) from exc
+                _LOGGER.warning(
+                    "Climate temperature command sent but cloud reported "
+                    "failure — updating state optimistically: %s",
+                    exc,
+                )
 
+        self._command_pending = True
         self.async_write_ha_state()
 
     @property
@@ -238,10 +278,23 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
             self._last_command = "start_climate"
             await self._api.async_call(_call, vin=self._vin, command=self._last_command)
         except Exception as exc:  # noqa: BLE001
-            raise HomeAssistantError(str(exc)) from exc
+            if not _is_remote_control_failure(exc):
+                raise HomeAssistantError(str(exc)) from exc
+            _LOGGER.warning(
+                "Climate preset command sent but cloud reported failure — "
+                "updating state optimistically: %s",
+                exc,
+            )
 
         self._last_mode = HVACMode.HEAT_COOL
+        self._command_pending = True
         self.async_write_ha_state()
+
+    def _handle_coordinator_update(self) -> None:
+        """Clear optimistic state when fresh data arrives from the coordinator."""
+        self._command_pending = False
+        self._pending_target_temp = None
+        super()._handle_coordinator_update()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

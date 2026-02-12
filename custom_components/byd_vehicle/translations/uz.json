@@ -230,6 +230,9 @@
       },
       "refrigerator_door_state": {
         "name": "Sovutgich eshigi"
+      },
+      "last_updated": {
+        "name": "So'nggi yangilanish"
       }
     },
     "binary_sensor": {

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -12,10 +13,23 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from pybyd import BydRemoteControlError
 from pybyd.models.hvac import HvacStatus
 
 from .const import DOMAIN
 from .coordinator import BydApi, BydDataUpdateCoordinator, get_vehicle_display
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _is_remote_control_failure(exc: BaseException) -> bool:
+    """Return True if *exc* wraps a BydRemoteControlError."""
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, BydRemoteControlError):
+            return True
+        current = current.__cause__  # type: ignore[assignment]
+    return False
 
 SEAT_LEVEL_OPTIONS = ["off", "low", "high"]
 SEAT_LEVEL_TO_INT = {"off": 0, "low": 1, "high": 3}
@@ -216,6 +230,7 @@ class BydSeatClimateSelect(CoordinatorEntity, SelectEntity):
         self._vehicle = vehicle
         self._attr_unique_id = f"{vin}_select_{description.key}"
         self._pending_value: str | None = None
+        self._command_pending = False
 
     def _get_hvac_status(self) -> HvacStatus | None:
         hvac_map = self.coordinator.data.get("hvac", {})
@@ -239,6 +254,8 @@ class BydSeatClimateSelect(CoordinatorEntity, SelectEntity):
     @property
     def current_option(self) -> str | None:
         if self._pending_value is not None:
+            return self._pending_value
+        if self._command_pending:
             return self._pending_value
         hvac = self._get_hvac_status()
         realtime = self._get_realtime()
@@ -275,10 +292,23 @@ class BydSeatClimateSelect(CoordinatorEntity, SelectEntity):
                 command=f"seat_climate_{self.entity_description.key}",
             )
         except Exception as exc:  # noqa: BLE001
-            self._pending_value = None
-            raise HomeAssistantError(str(exc)) from exc
+            if not _is_remote_control_failure(exc):
+                self._pending_value = None
+                raise HomeAssistantError(str(exc)) from exc
+            _LOGGER.warning(
+                "Seat climate command sent but cloud reported failure — "
+                "updating state optimistically: %s",
+                exc,
+            )
 
+        self._command_pending = True
         self.async_write_ha_state()
+
+    def _handle_coordinator_update(self) -> None:
+        """Clear optimistic state when fresh data arrives."""
+        self._command_pending = False
+        self._pending_value = None
+        super()._handle_coordinator_update()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

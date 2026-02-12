@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from homeassistant.components.lock import LockEntity
@@ -11,10 +12,23 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from pybyd import BydRemoteControlError
 from pybyd.models.realtime import LockState
 
 from .const import DOMAIN
 from .coordinator import BydApi, BydDataUpdateCoordinator, get_vehicle_display
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _is_remote_control_failure(exc: BaseException) -> bool:
+    """Return True if *exc* wraps a BydRemoteControlError."""
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, BydRemoteControlError):
+            return True
+        current = current.__cause__  # type: ignore[assignment]
+    return False
 
 
 async def async_setup_entry(
@@ -55,6 +69,7 @@ class BydLock(CoordinatorEntity, LockEntity):
         self._attr_unique_id = f"{vin}_lock"
         self._last_command: str | None = None
         self._last_locked: bool | None = None
+        self._command_pending = False
 
     @property
     def available(self) -> bool:
@@ -86,6 +101,8 @@ class BydLock(CoordinatorEntity, LockEntity):
 
     @property
     def is_locked(self) -> bool | None:
+        if self._command_pending:
+            return self._last_locked
         parsed = self._get_realtime_locks()
         if parsed is not None:
             return all(parsed)
@@ -93,6 +110,8 @@ class BydLock(CoordinatorEntity, LockEntity):
 
     @property
     def assumed_state(self) -> bool:
+        if self._command_pending:
+            return True
         parsed = self._get_realtime_locks()
         return parsed is None
 
@@ -105,7 +124,16 @@ class BydLock(CoordinatorEntity, LockEntity):
             self._last_locked = True
             await self._api.async_call(_call, vin=self._vin, command=self._last_command)
         except Exception as exc:  # noqa: BLE001
-            raise HomeAssistantError(str(exc)) from exc
+            if not _is_remote_control_failure(exc):
+                self._last_locked = None
+                raise HomeAssistantError(str(exc)) from exc
+            _LOGGER.warning(
+                "Lock command sent but cloud reported failure — "
+                "updating state optimistically: %s",
+                exc,
+            )
+        self._command_pending = True
+        self.async_write_ha_state()
 
     async def async_unlock(self, **_: Any) -> None:
         async def _call(client: Any) -> Any:
@@ -116,7 +144,21 @@ class BydLock(CoordinatorEntity, LockEntity):
             self._last_locked = False
             await self._api.async_call(_call, vin=self._vin, command=self._last_command)
         except Exception as exc:  # noqa: BLE001
-            raise HomeAssistantError(str(exc)) from exc
+            if not _is_remote_control_failure(exc):
+                self._last_locked = None
+                raise HomeAssistantError(str(exc)) from exc
+            _LOGGER.warning(
+                "Unlock command sent but cloud reported failure — "
+                "updating state optimistically: %s",
+                exc,
+            )
+        self._command_pending = True
+        self.async_write_ha_state()
+
+    def _handle_coordinator_update(self) -> None:
+        """Clear optimistic state when fresh data arrives."""
+        self._command_pending = False
+        super()._handle_coordinator_update()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

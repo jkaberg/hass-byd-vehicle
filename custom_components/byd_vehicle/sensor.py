@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -71,6 +72,17 @@ def _minutes_to_full(obj: Any) -> int | None:
     if h is None or m is None or h < 0 or m < 0:
         return None
     return h * 60 + m
+
+
+def _epoch_to_datetime(obj: Any) -> datetime | None:
+    """Convert an epoch timestamp (seconds or milliseconds) to a datetime."""
+    ts = getattr(obj, "timestamp", None)
+    if ts is None:
+        return None
+    # BYD may return milliseconds; normalise to seconds.
+    if ts > 1e12:
+        ts = ts / 1000
+    return datetime.fromtimestamp(ts, tz=UTC)
 
 
 SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
@@ -609,6 +621,18 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         source="hvac",
         icon="mdi:fridge",
         entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    # ==========================================
+    # Last updated timestamp
+    # ==========================================
+    BydSensorDescription(
+        key="last_updated",
+        name="Last updated",
+        source="realtime",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_epoch_to_datetime,
+        icon="mdi:clock-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )

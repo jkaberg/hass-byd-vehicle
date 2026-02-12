@@ -230,6 +230,9 @@
       },
       "refrigerator_door_state": {
         "name": "Refrigerator door"
+      },
+      "last_updated": {
+        "name": "Last updated"
       }
     },
     "binary_sensor": {

@@ -230,6 +230,9 @@
       },
       "refrigerator_door_state": {
         "name": "Kylskåpsdörr"
+      },
+      "last_updated": {
+        "name": "Senast uppdaterad"
       }
     },
     "binary_sensor": {
