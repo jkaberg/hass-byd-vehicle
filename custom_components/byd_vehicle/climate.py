@@ -174,8 +174,10 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
             return self._pending_target_temp
         hvac = self._get_hvac_status()
         if hvac is not None:
+            # main_setting_temp_new is already in °C (precise value from API)
             if hvac.main_setting_temp_new is not None:
-                return self._scale_to_celsius(hvac.main_setting_temp_new)
+                return hvac.main_setting_temp_new
+            # main_setting_temp is a BYD scale value (1-17) that needs conversion
             if hvac.main_setting_temp is not None:
                 return self._scale_to_celsius(hvac.main_setting_temp)
         return None
@@ -249,11 +251,11 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
     def preset_mode(self) -> str | None:
         hvac = self._get_hvac_status()
         if hvac is not None and hvac.is_ac_on:
-            scale = (
-                hvac.main_setting_temp_new
-                if hvac.main_setting_temp_new is not None
-                else hvac.main_setting_temp
-            )
+            # main_setting_temp_new is °C — convert back to scale for preset check
+            if hvac.main_setting_temp_new is not None:
+                scale = self._celsius_to_scale(hvac.main_setting_temp_new)
+            else:
+                scale = hvac.main_setting_temp
             return self._preset_from_scale(scale)
         if self.hvac_mode != HVACMode.OFF and self._pending_target_temp is not None:
             scale = self._celsius_to_scale(self._pending_target_temp)
@@ -303,8 +305,10 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
         if hvac is not None:
             # Temperatures
             attrs["exterior_temperature"] = hvac.temp_out_car
+            # copilot_setting_temp_new is already in °C;
+            # copilot_setting_temp is a BYD scale value (1-17)
             attrs["passenger_set_temperature"] = (
-                self._scale_to_celsius(hvac.copilot_setting_temp_new)
+                hvac.copilot_setting_temp_new
                 if hvac.copilot_setting_temp_new is not None
                 else (
                     self._scale_to_celsius(hvac.copilot_setting_temp)
