@@ -39,9 +39,16 @@ DEFAULT_COUNTRY = "Netherlands"
 DEFAULT_COUNTRY_CODE = "NL"
 DEFAULT_LANGUAGE = "en"
 
+# https://github.com/jkaberg/hass-byd-vehicle/issues/12
 BASE_URLS: dict[str, str] = {
     "Europe": "https://dilinkappoversea-eu.byd.auto",
+    "Singapore/APAC": "https://dilinkappoversea-sg.byd.auto",
     "Australia": "https://dilinkappoversea-au.byd.auto",
+    "Brazil": "https://dilinkappoversea-br.byd.auto",
+    "Japan": "https://dilinkappoversea-jp.byd.auto",
+    "Uzbekistan": "https://dilinkappoversea-uz.byd.auto",
+    "Middle East/Africa": "https://dilinkappoversea-no.byd.auto",
+    "Mexico/Latin America": "https://dilinkappoversea-mx.byd.auto",
 }
 
 COUNTRY_OPTIONS: dict[str, tuple[str, str]] = {
