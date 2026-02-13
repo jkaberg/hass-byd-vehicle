@@ -23,12 +23,29 @@ from .const import (
     DEFAULT_POLL_INTERVAL,
     DEFAULT_SMART_GPS_POLLING,
     DOMAIN,
+    MAX_GPS_ACTIVE_INTERVAL,
+    MAX_GPS_INACTIVE_INTERVAL,
+    MAX_GPS_POLL_INTERVAL,
+    MAX_POLL_INTERVAL,
+    MIN_GPS_ACTIVE_INTERVAL,
+    MIN_GPS_INACTIVE_INTERVAL,
+    MIN_GPS_POLL_INTERVAL,
+    MIN_POLL_INTERVAL,
     PLATFORMS,
 )
 from .coordinator import BydApi, BydDataUpdateCoordinator, BydGpsUpdateCoordinator
 from .device_fingerprint import generate_device_profile
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _sanitize_interval(value: int, default: int, min_value: int, max_value: int) -> int:
+    """Clamp interval values so stale options cannot break scheduling."""
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(min_value, min(max_value, parsed))
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -45,14 +62,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = async_get_clientsession(hass)
     api = BydApi(hass, entry, session)
 
-    poll_interval = entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
-    gps_interval = entry.options.get(CONF_GPS_POLL_INTERVAL, DEFAULT_GPS_POLL_INTERVAL)
-    smart_gps = entry.options.get(CONF_SMART_GPS_POLLING, DEFAULT_SMART_GPS_POLLING)
-    gps_active = entry.options.get(
-        CONF_GPS_ACTIVE_INTERVAL, DEFAULT_GPS_ACTIVE_INTERVAL
+    poll_interval = _sanitize_interval(
+        entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
+        DEFAULT_POLL_INTERVAL,
+        MIN_POLL_INTERVAL,
+        MAX_POLL_INTERVAL,
     )
-    gps_inactive = entry.options.get(
-        CONF_GPS_INACTIVE_INTERVAL, DEFAULT_GPS_INACTIVE_INTERVAL
+    gps_interval = _sanitize_interval(
+        entry.options.get(CONF_GPS_POLL_INTERVAL, DEFAULT_GPS_POLL_INTERVAL),
+        DEFAULT_GPS_POLL_INTERVAL,
+        MIN_GPS_POLL_INTERVAL,
+        MAX_GPS_POLL_INTERVAL,
+    )
+    smart_gps = entry.options.get(CONF_SMART_GPS_POLLING, DEFAULT_SMART_GPS_POLLING)
+    gps_active = _sanitize_interval(
+        entry.options.get(CONF_GPS_ACTIVE_INTERVAL, DEFAULT_GPS_ACTIVE_INTERVAL),
+        DEFAULT_GPS_ACTIVE_INTERVAL,
+        MIN_GPS_ACTIVE_INTERVAL,
+        MAX_GPS_ACTIVE_INTERVAL,
+    )
+    gps_inactive = _sanitize_interval(
+        entry.options.get(CONF_GPS_INACTIVE_INTERVAL, DEFAULT_GPS_INACTIVE_INTERVAL),
+        DEFAULT_GPS_INACTIVE_INTERVAL,
+        MIN_GPS_INACTIVE_INTERVAL,
+        MAX_GPS_INACTIVE_INTERVAL,
     )
 
     async def _fetch_vehicles(client: BydClient) -> list:

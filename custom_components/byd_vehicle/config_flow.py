@@ -43,10 +43,25 @@ from .const import (
     DEFAULT_POLL_INTERVAL,
     DEFAULT_SMART_GPS_POLLING,
     DOMAIN,
+    MAX_CLIMATE_DURATION,
+    MAX_GPS_ACTIVE_INTERVAL,
+    MAX_GPS_INACTIVE_INTERVAL,
+    MAX_GPS_POLL_INTERVAL,
+    MAX_POLL_INTERVAL,
+    MIN_CLIMATE_DURATION,
+    MIN_GPS_ACTIVE_INTERVAL,
+    MIN_GPS_INACTIVE_INTERVAL,
+    MIN_GPS_POLL_INTERVAL,
+    MIN_POLL_INTERVAL,
 )
 from .device_fingerprint import generate_device_profile
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _bounded_int(min_value: int, max_value: int) -> vol.All:
+    """Build an integer validator with explicit bounds."""
+    return vol.All(vol.Coerce(int), vol.Range(min=min_value, max=max_value))
 
 
 async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
@@ -107,13 +122,13 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                 vol.Optional(
                     CONF_POLL_INTERVAL,
                     default=defaults.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
-                ): int,
+                ): _bounded_int(MIN_POLL_INTERVAL, MAX_POLL_INTERVAL),
                 vol.Optional(
                     CONF_GPS_POLL_INTERVAL,
                     default=defaults.get(
                         CONF_GPS_POLL_INTERVAL, DEFAULT_GPS_POLL_INTERVAL
                     ),
-                ): int,
+                ): _bounded_int(MIN_GPS_POLL_INTERVAL, MAX_GPS_POLL_INTERVAL),
                 vol.Optional(
                     CONF_SMART_GPS_POLLING,
                     default=defaults.get(
@@ -127,21 +142,24 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                         CONF_GPS_ACTIVE_INTERVAL,
                         DEFAULT_GPS_ACTIVE_INTERVAL,
                     ),
-                ): int,
+                ): _bounded_int(MIN_GPS_ACTIVE_INTERVAL, MAX_GPS_ACTIVE_INTERVAL),
                 vol.Optional(
                     CONF_GPS_INACTIVE_INTERVAL,
                     default=defaults.get(
                         CONF_GPS_INACTIVE_INTERVAL,
                         DEFAULT_GPS_INACTIVE_INTERVAL,
                     ),
-                ): int,
+                ): _bounded_int(
+                    MIN_GPS_INACTIVE_INTERVAL,
+                    MAX_GPS_INACTIVE_INTERVAL,
+                ),
                 vol.Optional(
                     CONF_CLIMATE_DURATION,
                     default=defaults.get(
                         CONF_CLIMATE_DURATION,
                         DEFAULT_CLIMATE_DURATION,
                     ),
-                ): int,
+                ): _bounded_int(MIN_CLIMATE_DURATION, MAX_CLIMATE_DURATION),
                 vol.Optional(
                     CONF_DEBUG_DUMPS,
                     default=defaults.get(
@@ -326,13 +344,13 @@ class BydVehicleOptionsFlow(config_entries.OptionsFlow):
                     default=self._config_entry.options.get(
                         CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL
                     ),
-                ): int,
+                ): _bounded_int(MIN_POLL_INTERVAL, MAX_POLL_INTERVAL),
                 vol.Optional(
                     CONF_GPS_POLL_INTERVAL,
                     default=self._config_entry.options.get(
                         CONF_GPS_POLL_INTERVAL, DEFAULT_GPS_POLL_INTERVAL
                     ),
-                ): int,
+                ): _bounded_int(MIN_GPS_POLL_INTERVAL, MAX_GPS_POLL_INTERVAL),
                 vol.Optional(
                     CONF_SMART_GPS_POLLING,
                     default=self._config_entry.options.get(
@@ -344,19 +362,22 @@ class BydVehicleOptionsFlow(config_entries.OptionsFlow):
                     default=self._config_entry.options.get(
                         CONF_GPS_ACTIVE_INTERVAL, DEFAULT_GPS_ACTIVE_INTERVAL
                     ),
-                ): int,
+                ): _bounded_int(MIN_GPS_ACTIVE_INTERVAL, MAX_GPS_ACTIVE_INTERVAL),
                 vol.Optional(
                     CONF_GPS_INACTIVE_INTERVAL,
                     default=self._config_entry.options.get(
                         CONF_GPS_INACTIVE_INTERVAL, DEFAULT_GPS_INACTIVE_INTERVAL
                     ),
-                ): int,
+                ): _bounded_int(
+                    MIN_GPS_INACTIVE_INTERVAL,
+                    MAX_GPS_INACTIVE_INTERVAL,
+                ),
                 vol.Optional(
                     CONF_CLIMATE_DURATION,
                     default=self._config_entry.options.get(
                         CONF_CLIMATE_DURATION, DEFAULT_CLIMATE_DURATION
                     ),
-                ): int,
+                ): _bounded_int(MIN_CLIMATE_DURATION, MAX_CLIMATE_DURATION),
                 vol.Optional(
                     CONF_DEBUG_DUMPS,
                     default=self._config_entry.options.get(

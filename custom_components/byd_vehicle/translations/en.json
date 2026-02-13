@@ -234,7 +234,10 @@
         "name": "Refrigerator door"
       },
       "last_updated": {
-        "name": "Last updated"
+        "name": "Telemetry last updated"
+      },
+      "gps_last_updated": {
+        "name": "GPS last updated"
       }
     },
     "binary_sensor": {

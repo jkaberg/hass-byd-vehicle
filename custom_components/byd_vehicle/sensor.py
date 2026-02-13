@@ -76,17 +76,6 @@ def _minutes_to_full(obj: Any) -> int | None:
     return h * 60 + m
 
 
-def _epoch_to_datetime(obj: Any) -> datetime | None:
-    """Convert an epoch timestamp (seconds or milliseconds) to a datetime."""
-    ts = getattr(obj, "timestamp", None)
-    if ts is None:
-        return None
-    # BYD may return milliseconds; normalise to seconds.
-    if ts > 1e12:
-        ts = ts / 1000
-    return datetime.fromtimestamp(ts, tz=UTC)
-
-
 def _epoch_attr_to_datetime(attr: str) -> Callable[[Any], datetime | None]:
     """Create a converter for an epoch attr (seconds or milliseconds)."""
 
@@ -686,7 +675,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     # ==========================================
     BydSensorDescription(
         key="last_updated",
-        name="Last updated",
+        name="Telemetry last updated",
         source="realtime",
         device_class=SensorDeviceClass.TIMESTAMP,
         icon="mdi:clock-outline",
@@ -801,9 +790,14 @@ class BydSensor(CoordinatorEntity, SensorEntity):
     def available(self) -> bool:
         """Return True when the coordinator has data for this source."""
         if self.entity_description.key == "last_updated":
-            return super().available and self.coordinator.get_telemetry_freshness() is not None
+            return (
+                super().available
+                and self.coordinator.get_telemetry_freshness() is not None
+            )
         if self.entity_description.key == "gps_last_updated":
-            return super().available and self.coordinator.get_gps_freshness() is not None
+            return (
+                super().available and self.coordinator.get_gps_freshness() is not None
+            )
         return super().available and self._get_source_obj() is not None
 
     @property

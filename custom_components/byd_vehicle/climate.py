@@ -278,13 +278,9 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
             # main_setting_temp_new is °C — convert back to scale for preset check
             temp_c = self._valid_target_temp_c(hvac.main_setting_temp_new)
             if temp_c is not None:
-                return self._preset_from_scale(
-                    self._celsius_to_scale(temp_c)
-                )
+                return self._preset_from_scale(self._celsius_to_scale(temp_c))
             scale = self._valid_target_scale(hvac.main_setting_temp)
-            return self._preset_from_scale(
-                scale
-            )
+            return self._preset_from_scale(scale)
         if self.hvac_mode != HVACMode.OFF and self._pending_target_temp is not None:
             scale = self._celsius_to_scale(self._pending_target_temp)
             return self._preset_from_scale(scale)
@@ -358,8 +354,6 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
             # Misc
             attrs["rapid_heating"] = hvac.rapid_increase_temp_state
             attrs["rapid_cooling"] = hvac.rapid_decrease_temp_state
-        else:
-            pass
         if self._last_command:
             attrs["last_remote_command"] = self._last_command
             last_result = self._api.get_last_remote_result(

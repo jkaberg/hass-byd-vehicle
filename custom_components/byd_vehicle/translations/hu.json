@@ -233,6 +233,9 @@
       },
       "last_updated": {
         "name": "Legutóbb frissítve"
+      },
+      "gps_last_updated": {
+        "name": "GPS legutóbb frissítve"
       }
     },
     "binary_sensor": {

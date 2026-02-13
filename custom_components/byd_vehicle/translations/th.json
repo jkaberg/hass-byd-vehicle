@@ -233,6 +233,9 @@
       },
       "last_updated": {
         "name": "อัปเดตล่าสุด"
+      },
+      "gps_last_updated": {
+        "name": "GPS อัปเดตล่าสุด"
       }
     },
     "binary_sensor": {

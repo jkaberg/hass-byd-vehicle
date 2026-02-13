@@ -233,6 +233,9 @@
       },
       "last_updated": {
         "name": "So'nggi yangilanish"
+      },
+      "gps_last_updated": {
+        "name": "GPS so'nggi yangilanish"
       }
     },
     "binary_sensor": {
