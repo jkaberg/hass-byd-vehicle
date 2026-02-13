@@ -27,7 +27,7 @@ def _is_remote_control_failure(exc: BaseException) -> bool:
     while current is not None:
         if isinstance(current, BydRemoteControlError):
             return True
-        current = current.__cause__  # type: ignore[assignment]
+        current = current.__cause__
     return False
 
 

@@ -35,7 +35,7 @@ def _is_remote_control_failure(exc: BaseException) -> bool:
     while current is not None:
         if isinstance(current, BydRemoteControlError):
             return True
-        current = current.__cause__  # type: ignore[assignment]
+        current = current.__cause__
     return False
 
 
@@ -257,10 +257,14 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
         if hvac is not None and hvac.is_ac_on:
             # main_setting_temp_new is °C — convert back to scale for preset check
             if hvac.main_setting_temp_new is not None:
-                scale = self._celsius_to_scale(hvac.main_setting_temp_new)
-            else:
-                scale = hvac.main_setting_temp
-            return self._preset_from_scale(scale)
+                return self._preset_from_scale(
+                    self._celsius_to_scale(hvac.main_setting_temp_new)
+                )
+            return self._preset_from_scale(
+                self._celsius_to_scale(hvac.main_setting_temp)
+                if hvac.main_setting_temp is not None
+                else None
+            )
         if self.hvac_mode != HVACMode.OFF and self._pending_target_temp is not None:
             scale = self._celsius_to_scale(self._pending_target_temp)
             return self._preset_from_scale(scale)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
@@ -82,11 +82,9 @@ class BydButton(CoordinatorEntity, ButtonEntity):
     ) -> None:
         """Initialize the button."""
         super().__init__(coordinator)
-        self.entity_description = replace(
-            description,
-            name=None,
-            translation_key=description.key,
-        )
+        self.entity_description = description
+        self._attr_name = None
+        self._attr_translation_key = description.key
         self._api = api
         self._vin = vin
         self._vehicle = vehicle

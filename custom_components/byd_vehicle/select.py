@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
@@ -28,7 +28,7 @@ def _is_remote_control_failure(exc: BaseException) -> bool:
     while current is not None:
         if isinstance(current, BydRemoteControlError):
             return True
-        current = current.__cause__  # type: ignore[assignment]
+        current = current.__cause__
     return False
 
 
@@ -225,11 +225,9 @@ class BydSeatClimateSelect(CoordinatorEntity, SelectEntity):
     ) -> None:
         """Initialize the select entity."""
         super().__init__(coordinator)
-        self.entity_description = replace(
-            description,
-            name=None,
-            translation_key=description.key,
-        )
+        self.entity_description = description
+        self._attr_name = None
+        self._attr_translation_key = description.key
         self._api = api
         self._vin = vin
         self._vehicle = vehicle

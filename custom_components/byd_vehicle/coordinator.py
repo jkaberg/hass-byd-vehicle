@@ -82,7 +82,7 @@ class BydApi:
 
     @staticmethod
     def _json_safe(value: Any) -> Any:
-        if dataclasses.is_dataclass(value):
+        if dataclasses.is_dataclass(value) and not isinstance(value, type):
             return BydApi._json_safe(dataclasses.asdict(value))
         if isinstance(value, dict):
             return {str(key): BydApi._json_safe(inner) for key, inner in value.items()}
@@ -415,22 +415,48 @@ class BydGpsUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._smart_polling = smart_polling
         self._active_interval = timedelta(seconds=active_interval)
         self._inactive_interval = timedelta(seconds=inactive_interval)
+        self._current_interval = timedelta(seconds=poll_interval)
         self._last_smart_state: bool | None = None
 
     def _is_any_vehicle_moving(self, data: dict[str, Any]) -> bool:
-        """Check if any vehicle is moving based on GPS speed."""
+        """Check if any vehicle is moving based on known speed data."""
         gps_map = data.get("gps", {})
-        if not gps_map:
-            _LOGGER.debug("Smart GPS: no GPS data available yet")
+        telemetry_data = self._telemetry_coordinator.data if self._telemetry_coordinator else None
+        realtime_map = (
+            telemetry_data.get("realtime", {})
+            if isinstance(telemetry_data, dict)
+            else {}
+        )
+
+        vins = set(data.get("vehicles", {}).keys())
+        vins.update(gps_map.keys())
+        vins.update(realtime_map.keys())
+
+        if not vins:
+            _LOGGER.debug("Smart GPS: no GPS or realtime data available yet")
             return False
-        for vin, gps in gps_map.items():
-            if gps is None:
-                continue
-            speed = getattr(gps, "speed", None)
+
+        for vin in vins:
+            gps = gps_map.get(vin)
+            realtime = realtime_map.get(vin)
+
+            realtime_speed = getattr(realtime, "speed", None) if realtime is not None else None
+            gps_speed = getattr(gps, "speed", None) if gps is not None else None
+            speed = realtime_speed if realtime_speed is not None else gps_speed
+            if realtime_speed is not None:
+                speed_source = "realtime"
+            elif gps_speed is not None:
+                speed_source = "gps"
+            else:
+                speed_source = "none"
+
             _LOGGER.debug(
-                "Smart GPS: VIN %s speed=%s",
+                "Smart GPS: VIN %s speed=%s source=%s (realtime=%s gps=%s)",
                 vin[-6:],
                 speed,
+                speed_source,
+                realtime_speed,
+                gps_speed,
             )
             if speed is not None and speed > 0:
                 return True
@@ -442,13 +468,14 @@ class BydGpsUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return
         is_moving = self._is_any_vehicle_moving(data)
         new_interval = self._active_interval if is_moving else self._inactive_interval
-        if self.update_interval != new_interval:
+        if self._current_interval != new_interval:
             _LOGGER.info(
                 "Smart GPS polling: vehicle %s, interval %ss -> %ss",
                 "moving" if is_moving else "stationary",
-                self.update_interval.total_seconds(),
+                self._current_interval.total_seconds(),
                 new_interval.total_seconds(),
             )
+            self._current_interval = new_interval
             self.update_interval = new_interval
             self._last_smart_state = is_moving
 

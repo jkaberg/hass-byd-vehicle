@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -744,11 +744,9 @@ class BydSensor(CoordinatorEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self.entity_description = replace(
-            description,
-            name=None,
-            translation_key=description.key,
-        )
+        self.entity_description = description
+        self._attr_name = None
+        self._attr_translation_key = description.key
         self._vin = vin
         self._vehicle = vehicle
         self._attr_unique_id = f"{vin}_{description.source}_{description.key}"
@@ -779,8 +777,9 @@ class BydSensor(CoordinatorEntity, SensorEntity):
             return self.entity_description.value_fn(obj)
         attr = self.entity_description.attr_key or self.entity_description.key
         value = getattr(obj, attr, None)
-        if hasattr(value, "value") and isinstance(value.value, int):
-            return value.value
+        enum_value = getattr(value, "value", None)
+        if isinstance(enum_value, int):
+            return enum_value
         return value
 
     # ------------------------------------------------------------------
