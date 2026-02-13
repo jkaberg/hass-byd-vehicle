@@ -23,11 +23,11 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfTime,
 )
-from pybyd.models.realtime import TirePressureUnit
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from pybyd.models.realtime import TirePressureUnit
 
 from .const import DOMAIN
 from .coordinator import (
@@ -69,8 +69,10 @@ def _minutes_to_full(obj: Any) -> int | None:
     """Calculate minutes to full from hour/minute fields."""
     h = getattr(obj, "full_hour", None)
     m = getattr(obj, "full_minute", None)
-    if h is None or m is None or h < 0 or m < 0:
+    if h is None or m is None:
         return None
+    h = max(int(h), 0)
+    m = max(int(m), 0)
     return h * 60 + m
 
 
@@ -83,6 +85,48 @@ def _epoch_to_datetime(obj: Any) -> datetime | None:
     if ts > 1e12:
         ts = ts / 1000
     return datetime.fromtimestamp(ts, tz=UTC)
+
+
+def _epoch_attr_to_datetime(attr: str) -> Callable[[Any], datetime | None]:
+    """Create a converter for an epoch attr (seconds or milliseconds)."""
+
+    def _convert(obj: Any) -> datetime | None:
+        ts = getattr(obj, attr, None)
+        if ts is None:
+            return None
+        ts_int = int(ts)
+        if ts_int > 1_000_000_000_000:
+            ts_int = int(ts_int / 1000)
+        return datetime.fromtimestamp(ts_int, tz=UTC)
+
+    return _convert
+
+
+def _round_int_attr(attr: str) -> Callable[[Any], int | None]:
+    """Create a converter that rounds a numeric attribute to an integer."""
+
+    def _convert(obj: Any) -> int | None:
+        value = getattr(obj, attr, None)
+        if value is None:
+            return None
+        return int(round(float(value)))
+
+    return _convert
+
+
+def _charge_time_or_zero(attr: str) -> Callable[[Any], int | None]:
+    """Create a converter that maps negative charge-time sentinels to zero."""
+
+    def _convert(obj: Any) -> int | None:
+        value = getattr(obj, attr, None)
+        if value is None:
+            return None
+        parsed = int(value)
+        if parsed < 0:
+            return 0
+        return parsed
+
+    return _convert
 
 
 SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
@@ -105,6 +149,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:map-marker-distance",
+        value_fn=_round_int_attr("endurance_mileage"),
     ),
     BydSensorDescription(
         key="total_mileage",
@@ -114,6 +159,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:counter",
+        value_fn=_round_int_attr("total_mileage"),
     ),
     BydSensorDescription(
         key="speed",
@@ -130,7 +176,9 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=_filter_temp,
+        value_fn=lambda obj: (
+            int(round(temp)) if (temp := _filter_temp(obj)) is not None else None
+        ),
     ),
     # Tire pressures – unit resolved dynamically from tire_press_unit;
     # kPa is the default because most BYD vehicles report tirePressUnit=3.
@@ -216,6 +264,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_round_int_attr("temp_out_car"),
     ),
     BydSensorDescription(
         key="pm",
@@ -248,6 +297,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_round_int_attr("ev_endurance"),
     ),
     BydSensorDescription(
         key="endurance_mileage_v2",
@@ -258,6 +308,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_round_int_attr("endurance_mileage_v2"),
     ),
     BydSensorDescription(
         key="total_mileage_v2",
@@ -268,6 +319,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_round_int_attr("total_mileage_v2"),
     ),
     # Driving
     BydSensorDescription(
@@ -310,6 +362,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         icon="mdi:clock-outline",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_charge_time_or_zero("full_hour"),
     ),
     BydSensorDescription(
         key="full_minute",
@@ -318,6 +371,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         icon="mdi:clock-outline",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_charge_time_or_zero("full_minute"),
     ),
     BydSensorDescription(
         key="charge_remaining_hours",
@@ -326,6 +380,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         icon="mdi:clock-outline",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_charge_time_or_zero("charge_remaining_hours"),
     ),
     BydSensorDescription(
         key="charge_remaining_minutes",
@@ -334,6 +389,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         icon="mdi:clock-outline",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_charge_time_or_zero("charge_remaining_minutes"),
     ),
     BydSensorDescription(
         key="booking_charge_state",
@@ -583,6 +639,8 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         name="Charging last update",
         source="charging",
         attr_key="update_time",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_epoch_attr_to_datetime("update_time"),
         icon="mdi:clock-outline",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,

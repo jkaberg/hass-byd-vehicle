@@ -60,6 +60,7 @@ Integration**, and search for **BYD Vehicle**.
 | Smart GPS polling | bool | no | false | When enabled, uses different intervals depending on whether the vehicle is moving. |
 | GPS active interval | int | no | 30 | GPS polling interval in seconds while the vehicle is moving (smart GPS). |
 | GPS inactive interval | int | no | 600 | GPS polling interval in seconds while the vehicle is parked (smart GPS). |
+| Debug dump API responses | bool | no | false | When enabled, writes redacted BYD API request/response traces to local JSON files for troubleshooting. |
 
 #### Supported countries
 
@@ -106,6 +107,7 @@ from the integration's **Configure** menu under **Settings > Devices & Services*
 | Smart GPS polling | bool | false | Enable adaptive GPS polling based on vehicle movement. |
 | GPS active interval | int | 30 | GPS interval while moving (seconds). |
 | GPS inactive interval | int | 600 | GPS interval while parked (seconds). |
+| Debug dump API responses | bool | false | Write redacted API traces to local JSON files for diagnostics. |
 
 ## Entities
 
@@ -248,3 +250,20 @@ initial setup or update it by re-adding the integration.
   depends on the configured polling intervals.
 - A unique device fingerprint is generated per config entry to identify the
   integration to the BYD API.
+
+### Debug dumps
+
+When **Debug dump API responses** is enabled in integration options, BYD API
+request/response traces are written to:
+
+- `.storage/byd_vehicle_debug/`
+- Home Assistant config path example: `/config/.storage/byd_vehicle_debug/`
+
+Each trace is stored as a timestamped JSON file. This is intended only for
+short-term troubleshooting because API payloads can contain sensitive metadata.
+
+Behavior details:
+
+- Disabled by default.
+- Captures transport-level API request/response traces.
+- Applies field redaction for common secrets before writing files.

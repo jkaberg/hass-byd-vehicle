@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
+import json
 import logging
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -30,8 +33,10 @@ from .const import (
     CONF_BASE_URL,
     CONF_CONTROL_PIN,
     CONF_COUNTRY_CODE,
+    CONF_DEBUG_DUMPS,
     CONF_DEVICE_PROFILE,
     CONF_LANGUAGE,
+    DEFAULT_DEBUG_DUMPS,
     DEFAULT_LANGUAGE,
     DOMAIN,
 )
@@ -65,9 +70,49 @@ class BydApi:
         self._last_remote_results: dict[tuple[str, str], dict[str, Any]] = {}
         self._unsupported_remote_commands: dict[str, set[str]] = {}
         self._client: BydClient | None = None
+        self._debug_dumps_enabled = entry.options.get(
+            CONF_DEBUG_DUMPS,
+            DEFAULT_DEBUG_DUMPS,
+        )
+        self._debug_dump_dir = Path(hass.config.path(".storage/byd_vehicle_debug"))
+        self._reload_scheduled = False
         # Serialize all BYD cloud calls so telemetry polls and remote
         # commands never overlap (BYD returns 6024 for concurrent ops).
         self._api_lock = asyncio.Lock()
+
+    @staticmethod
+    def _json_safe(value: Any) -> Any:
+        if dataclasses.is_dataclass(value):
+            return BydApi._json_safe(dataclasses.asdict(value))
+        if isinstance(value, dict):
+            return {str(key): BydApi._json_safe(inner) for key, inner in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [BydApi._json_safe(item) for item in value]
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        if hasattr(value, "value"):
+            enum_value = getattr(value, "value", None)
+            if isinstance(enum_value, (str, int, float, bool)):
+                return enum_value
+            return str(value)
+        return str(value)
+
+    def _write_debug_dump(self, category: str, payload: dict[str, Any]) -> None:
+        if not self._debug_dumps_enabled:
+            return
+        try:
+            self._debug_dump_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S%fZ")
+            file_path = self._debug_dump_dir / f"{timestamp}_{category}.json"
+            file_path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.debug("Failed to write BYD debug dump", exc_info=True)
+
+    def _record_transport_trace(self, payload: dict[str, Any]) -> None:
+        self._write_debug_dump("api_trace", self._json_safe(payload))
 
     @property
     def config(self) -> BydConfig:
@@ -136,7 +181,13 @@ class BydApi:
         expiry transparently — we only manage the transport lifecycle.
         """
         if self._client is None:
-            self._client = BydClient(self._config, session=self._http_session)
+            self._client = BydClient(
+                self._config,
+                session=self._http_session,
+                response_trace_recorder=(
+                    self._record_transport_trace if self._debug_dumps_enabled else None
+                ),
+            )
             await self._client.__aenter__()
         return self._client
 
@@ -180,6 +231,7 @@ class BydApi:
         try:
             client = await self._ensure_client()
             result = await handler(client)
+            self._reload_scheduled = False
             if isinstance(result, RemoteControlResult) and vin and command:
                 self._store_remote_result(vin, command, result)
             return result
@@ -189,6 +241,7 @@ class BydApi:
             try:
                 client = await self._ensure_client()
                 result = await handler(client)
+                self._reload_scheduled = False
                 if isinstance(result, RemoteControlResult) and vin and command:
                     self._store_remote_result(vin, command, result)
                 return result
@@ -199,7 +252,12 @@ class BydApi:
             except BydSessionExpiredError as exc:
                 if vin and command:
                     self._store_remote_result(vin, command, None, exc)
-                raise ConfigEntryAuthFailed(str(exc)) from exc
+                if not self._reload_scheduled:
+                    self._reload_scheduled = True
+                    self._hass.async_create_task(
+                        self._hass.config_entries.async_reload(self._entry.entry_id)
+                    )
+                raise UpdateFailed(str(exc)) from exc
         except BydRemoteControlError as exc:
             if vin and command:
                 self._store_remote_result(vin, command, None, exc)

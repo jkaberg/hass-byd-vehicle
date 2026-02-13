@@ -143,6 +143,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.claude
+CLAUDE.md
+.github/copilot-instructions.md
 
 # Spyder project settings
 .spyderproject

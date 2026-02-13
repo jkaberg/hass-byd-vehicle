@@ -46,6 +46,33 @@ def _bool_from_int(attr: str) -> Callable[[Any], bool | None]:
     return _fn
 
 
+def _window_open(attr: str) -> Callable[[Any], bool | None]:
+    """Return True only when window enum/state value is OPEN (2)."""
+
+    def _fn(obj: Any) -> bool | None:
+        val = getattr(obj, attr, None)
+        if val is None:
+            return None
+        raw = int(val.value) if hasattr(val, "value") else int(val)
+        return raw == 2
+
+    return _fn
+
+
+def _vehicle_on_from_state(obj: Any) -> bool | None:
+    """Map vehicle_state values explicitly to avoid bool-cast inversion."""
+    val = getattr(obj, "vehicle_state", None)
+    if val is None:
+        return None
+    raw = int(val.value) if hasattr(val, "value") else int(val)
+    # Observed mapping in field reports: 0 means vehicle active/on.
+    if raw == 0:
+        return True
+    if raw == 1:
+        return False
+    return None
+
+
 BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     # =================================
     # Aggregate states (enabled)
@@ -161,6 +188,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         name="Front left window",
         source="realtime",
         device_class=BinarySensorDeviceClass.WINDOW,
+        value_fn=_window_open("left_front_window"),
         entity_registry_enabled_default=False,
     ),
     BydBinarySensorDescription(
@@ -168,6 +196,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         name="Front right window",
         source="realtime",
         device_class=BinarySensorDeviceClass.WINDOW,
+        value_fn=_window_open("right_front_window"),
         entity_registry_enabled_default=False,
     ),
     BydBinarySensorDescription(
@@ -175,6 +204,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         name="Rear left window",
         source="realtime",
         device_class=BinarySensorDeviceClass.WINDOW,
+        value_fn=_window_open("left_rear_window"),
         entity_registry_enabled_default=False,
     ),
     BydBinarySensorDescription(
@@ -182,6 +212,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         name="Rear right window",
         source="realtime",
         device_class=BinarySensorDeviceClass.WINDOW,
+        value_fn=_window_open("right_rear_window"),
         entity_registry_enabled_default=False,
     ),
     BydBinarySensorDescription(
@@ -189,6 +220,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         name="Skylight",
         source="realtime",
         device_class=BinarySensorDeviceClass.WINDOW,
+        value_fn=_window_open("skylight"),
         entity_registry_enabled_default=False,
     ),
     # ====================================
@@ -257,9 +289,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.POWER,
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda r: (
-            bool(r.vehicle_state) if r.vehicle_state is not None else None
-        ),
+        value_fn=_vehicle_on_from_state,
     ),
 )
 

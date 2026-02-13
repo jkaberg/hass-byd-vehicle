@@ -31,6 +31,7 @@ def _is_remote_control_failure(exc: BaseException) -> bool:
         current = current.__cause__  # type: ignore[assignment]
     return False
 
+
 SEAT_LEVEL_OPTIONS = ["off", "low", "high"]
 SEAT_LEVEL_TO_INT = {"off": 0, "low": 1, "high": 3}
 INT_TO_SEAT_LEVEL = {v: k for k, v in SEAT_LEVEL_TO_INT.items()}
@@ -124,6 +125,7 @@ SEAT_CLIMATE_DESCRIPTIONS: tuple[BydSeatClimateDescription, ...] = (
         icon="mdi:car-seat-heater",
         param_key="lr_seat_heat",
         hvac_attr="lr_seat_heat_state",
+        entity_registry_enabled_default=False,
     ),
     BydSeatClimateDescription(
         key="rear_left_seat_ventilation",
@@ -131,6 +133,7 @@ SEAT_CLIMATE_DESCRIPTIONS: tuple[BydSeatClimateDescription, ...] = (
         icon="mdi:car-seat-cooler",
         param_key="lr_seat_ventilation",
         hvac_attr="lr_seat_ventilation_state",
+        entity_registry_enabled_default=False,
     ),
     BydSeatClimateDescription(
         key="rear_right_seat_heat",
@@ -138,6 +141,7 @@ SEAT_CLIMATE_DESCRIPTIONS: tuple[BydSeatClimateDescription, ...] = (
         icon="mdi:car-seat-heater",
         param_key="rr_seat_heat",
         hvac_attr="rr_seat_heat_state",
+        entity_registry_enabled_default=False,
     ),
     BydSeatClimateDescription(
         key="rear_right_seat_ventilation",
@@ -145,6 +149,7 @@ SEAT_CLIMATE_DESCRIPTIONS: tuple[BydSeatClimateDescription, ...] = (
         icon="mdi:car-seat-cooler",
         param_key="rr_seat_ventilation",
         hvac_attr="rr_seat_ventilation_state",
+        entity_registry_enabled_default=False,
     ),
 )
 
@@ -231,6 +236,10 @@ class BydSeatClimateSelect(CoordinatorEntity, SelectEntity):
         self._attr_unique_id = f"{vin}_select_{description.key}"
         self._pending_value: str | None = None
         self._command_pending = False
+
+        if description.entity_registry_enabled_default is not False:
+            if self.current_option is None:
+                self._attr_entity_registry_enabled_default = False
 
     def _get_hvac_status(self) -> HvacStatus | None:
         hvac_map = self.coordinator.data.get("hvac", {})

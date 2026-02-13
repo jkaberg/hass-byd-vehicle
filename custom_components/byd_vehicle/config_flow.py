@@ -25,6 +25,7 @@ from .const import (
     CONF_CLIMATE_DURATION,
     CONF_CONTROL_PIN,
     CONF_COUNTRY_CODE,
+    CONF_DEBUG_DUMPS,
     CONF_DEVICE_PROFILE,
     CONF_GPS_ACTIVE_INTERVAL,
     CONF_GPS_INACTIVE_INTERVAL,
@@ -35,6 +36,7 @@ from .const import (
     COUNTRY_OPTIONS,
     DEFAULT_CLIMATE_DURATION,
     DEFAULT_COUNTRY,
+    DEFAULT_DEBUG_DUMPS,
     DEFAULT_GPS_ACTIVE_INTERVAL,
     DEFAULT_GPS_INACTIVE_INTERVAL,
     DEFAULT_GPS_POLL_INTERVAL,
@@ -140,6 +142,13 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         DEFAULT_CLIMATE_DURATION,
                     ),
                 ): int,
+                vol.Optional(
+                    CONF_DEBUG_DUMPS,
+                    default=defaults.get(
+                        CONF_DEBUG_DUMPS,
+                        DEFAULT_DEBUG_DUMPS,
+                    ),
+                ): bool,
             }
         )
 
@@ -179,6 +188,10 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_CLIMATE_DURATION: options.get(
                 CONF_CLIMATE_DURATION,
                 DEFAULT_CLIMATE_DURATION,
+            ),
+            CONF_DEBUG_DUMPS: options.get(
+                CONF_DEBUG_DUMPS,
+                DEFAULT_DEBUG_DUMPS,
             ),
         }
 
@@ -239,6 +252,7 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_GPS_INACTIVE_INTERVAL
                         ],
                         CONF_CLIMATE_DURATION: user_input[CONF_CLIMATE_DURATION],
+                        CONF_DEBUG_DUMPS: user_input[CONF_DEBUG_DUMPS],
                     }
 
                     self.hass.config_entries.async_update_entry(
@@ -271,6 +285,7 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_GPS_INACTIVE_INTERVAL
                         ],
                         CONF_CLIMATE_DURATION: user_input[CONF_CLIMATE_DURATION],
+                        CONF_DEBUG_DUMPS: user_input[CONF_DEBUG_DUMPS],
                     },
                 )
 
@@ -342,6 +357,13 @@ class BydVehicleOptionsFlow(config_entries.OptionsFlow):
                         CONF_CLIMATE_DURATION, DEFAULT_CLIMATE_DURATION
                     ),
                 ): int,
+                vol.Optional(
+                    CONF_DEBUG_DUMPS,
+                    default=self._config_entry.options.get(
+                        CONF_DEBUG_DUMPS,
+                        DEFAULT_DEBUG_DUMPS,
+                    ),
+                ): bool,
             }
         )
 

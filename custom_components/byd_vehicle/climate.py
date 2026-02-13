@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import logging
+from typing import Any
 
 from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature
 from homeassistant.components.climate.const import HVACMode
@@ -48,7 +47,10 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator: BydDataUpdateCoordinator = data["coordinator"]
     api: BydApi = data["api"]
-    climate_duration = entry.options.get(CONF_CLIMATE_DURATION, DEFAULT_CLIMATE_DURATION)
+    climate_duration = entry.options.get(
+        CONF_CLIMATE_DURATION,
+        DEFAULT_CLIMATE_DURATION,
+    )
 
     entities: list[ClimateEntity] = []
 
@@ -180,11 +182,13 @@ class BydClimate(CoordinatorEntity, ClimateEntity):
             # main_setting_temp is a BYD scale value (1-17) that needs conversion
             if hvac.main_setting_temp is not None:
                 return self._scale_to_celsius(hvac.main_setting_temp)
-        return None
+        return self._DEFAULT_TEMP_C
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set HVAC mode (on/off)."""
-        temp = self._pending_target_temp or self.target_temperature or self._DEFAULT_TEMP_C
+        temp = (
+            self._pending_target_temp or self.target_temperature or self._DEFAULT_TEMP_C
+        )
 
         async def _call(client: Any) -> Any:
             if hvac_mode == HVACMode.OFF:
