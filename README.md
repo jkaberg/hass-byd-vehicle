@@ -43,6 +43,8 @@ repository.
 
 Configuration is done entirely through the Home Assistant UI (config flow).
 
+**IMPORTANT**: Please use an shared account (not the account you use with the app) for the integration; using the same account as the app will log you out in the app.
+
 Go to **Settings > Devices & Services > Integrations**, click **Add
 Integration**, and search for **BYD Vehicle**.
 
