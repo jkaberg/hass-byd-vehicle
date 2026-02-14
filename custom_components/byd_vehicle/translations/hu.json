@@ -2,31 +2,31 @@
   "config": {
     "step": {
       "user": {
-        "title": "Csatlakozás a BYD-hez",
-        "description": "Állítsa be a BYD fiókját.",
+        "title": "Csatlakozás a BYD-hoz",
+        "description": "BYD fiók beállítása.",
         "data": {
           "base_url": "Régió",
           "username": "Felhasználónév",
           "password": "Jelszó",
-          "control_pin": "Vezérlő PIN (opcionális, 6 számjegyű)",
+          "control_pin": "Vezérlő PIN kód (nem kötelező, 6 számjegyű)",
           "country_code": "Ország",
-          "poll_interval": "Lekérdezési intervallum (másodperc)",
-          "gps_poll_interval": "GPS lekérdezési intervallum (másodperc)",
+          "poll_interval": "Lekérdezési időköz (mp)",
+          "gps_poll_interval": "GPS lekérdezési időköz (mp)",
           "smart_gps_polling": "Intelligens GPS lekérdezés",
-          "gps_active_interval": "GPS aktív intervallum (másodperc)",
-          "gps_inactive_interval": "GPS inaktív intervallum (másodperc)",
-          "climate_duration": "Klíma időtartam (time_span)"
+          "gps_active_interval": "GPS aktív időköz (mp)",
+          "gps_inactive_interval": "GPS inaktív időköz (mp)",
+		  "climate_duration": "Klíma időtartam"
         }
       }
     },
     "error": {
       "cannot_connect": "Nem sikerült csatlakozni",
-      "invalid_control_pin": "Érvénytelen vezérlő PIN vagy felhőalapú vezérlés ideiglenesen zárolva van",
+      "invalid_control_pin": "Érvénytelen vezérlő PIN vagy a felhőalapú vezérlés ideiglenesen zárolva van",
       "invalid_auth": "Érvénytelen hitelesítés",
       "unknown": "Váratlan hiba"
     },
     "abort": {
-      "already_configured": "Ez a fiók már konfigurálva van",
+      "already_configured": "Ez a fiók már beállításra került",
       "wrong_account": "A fiók nem egyezik az újrahitelesítés alatt állóval",
       "reauth_successful": "Az újrahitelesítés sikeres volt"
     }
@@ -36,12 +36,12 @@
       "init": {
         "title": "Lekérdezés frissítése",
         "data": {
-          "poll_interval": "Lekérdezési intervallum (másodperc)",
-          "gps_poll_interval": "GPS lekérdezési intervallum (másodperc)",
+          "poll_interval": "Lekérdezési időköz (mp)",
+          "gps_poll_interval": "GPS lekérdezési időköz (mp)",
           "smart_gps_polling": "Intelligens GPS lekérdezés",
-          "gps_active_interval": "GPS aktív intervallum (másodperc)",
-          "gps_inactive_interval": "GPS inaktív intervallum (másodperc)",
-          "climate_duration": "Klíma időtartam (time_span)"
+          "gps_active_interval": "GPS aktív időköz (mp)",
+          "gps_inactive_interval": "GPS inaktív időköz (mp)",
+		  "climate_duration": "Klíma időtartam"
         }
       }
     }
@@ -49,19 +49,19 @@
   "entity": {
     "sensor": {
       "elec_percent": {
-        "name": "Az akkumulátor töltöttségi szintje"
+        "name": "Akkumulátor töltöttségi szint"
       },
       "endurance_mileage": {
         "name": "Hatótávolság"
       },
       "total_mileage": {
-        "name": "Úthosszmérő"
+        "name": "Megtett távolság"
       },
       "speed": {
         "name": "Sebesség"
       },
       "temp_in_car": {
-        "name": "A kabin hőmérséklete"
+        "name": "Kabinhőmérséklet"
       },
       "left_front_tire_pressure": {
         "name": "Bal első guminyomás"
@@ -79,7 +79,7 @@
         "name": "Töltés SOC"
       },
       "time_to_full": {
-        "name": "Ideje a teljes feltöltéshez"
+        "name": "Idő a teljes feltöltésig"
       },
       "total_energy": {
         "name": "Teljes energiafogyasztás"
@@ -94,7 +94,7 @@
         "name": "PM2.5"
       },
       "power_battery": {
-        "name": "Az akkumulátor töltöttségi szintje"
+        "name": "Akkumulátor töltöttségi szint"
       },
       "ev_endurance": {
         "name": "EV hatótáv"
@@ -109,25 +109,25 @@
         "name": "Fokozatválasztó pozíció"
       },
       "charging_state": {
-        "name": "Töltési állapot"
+        "name": "Töltés állapot"
       },
       "charge_state": {
-        "name": "Töltési állapot"
+        "name": "Töltő állapot"
       },
       "wait_status": {
-        "name": "Töltési várakozási állapot"
+        "name": "Töltési várakozás állapot"
       },
       "full_hour": {
-        "name": "Órák a telítődésig"
+        "name": "Órák a teljes töltésig"
       },
       "full_minute": {
-        "name": "Percek a telítődésig"
+        "name": "Percek a teljes töltésig"
       },
       "charge_remaining_hours": {
-        "name": "Hátralévő töltési órák"
+        "name": "Töltésből hátralévő órák"
       },
       "charge_remaining_minutes": {
-        "name": "Hátralévő töltési percek"
+        "name": "Töltésből hátralévő percek"
       },
       "booking_charge_state": {
         "name": "Ütemezett töltés"
@@ -139,16 +139,16 @@
         "name": "Ütemezett töltési perc"
       },
       "left_front_tire_status": {
-        "name": "Bal első gumiabroncs állapota"
+        "name": "Bal első gumi állapot"
       },
       "right_front_tire_status": {
-        "name": "Jobb első gumi állapota"
+        "name": "Jobb első gumi állapot"
       },
       "left_rear_tire_status": {
-        "name": "Bal hátsó gumi állapota"
+        "name": "Bal hátsó gumi állapot"
       },
       "right_rear_tire_status": {
-        "name": "Jobb hátsó gumi állapota"
+        "name": "Jobb hátsó gumi állapot"
       },
       "tirepressure_system": {
         "name": "TPMS állapot"
@@ -166,10 +166,10 @@
         "name": "Legutóbbi 50 km-es energia"
       },
       "oil_endurance": {
-        "name": "Üzemanyag tartomány"
+        "name": "Motorolaj élettartam"
       },
       "oil_percent": {
-        "name": "Üzemanyag szint"
+        "name": "Motorolaj szint"
       },
       "total_oil": {
         "name": "Teljes üzemanyag-fogyasztás"
@@ -190,16 +190,16 @@
         "name": "ABS figyelmeztetés"
       },
       "svs": {
-        "name": "Szerviz szükséges hamarosan"
+        "name": "Hamarosan szerviz szükséges"
       },
       "srs": {
         "name": "Légzsák figyelmeztetés"
       },
       "ect": {
-        "name": "Figyelmeztetés a hűtőfolyadék hőmérsékletére"
+        "name": "Hűtőfolyadék-hőmérséklet figyelmeztetés"
       },
       "ect_value": {
-        "name": "Hűtőfolyadék hőmérséklete"
+        "name": "Hűtőfolyadék hőmérséklet"
       },
       "pwr": {
         "name": "Tápfeszültség figyelmeztetés"
@@ -211,10 +211,10 @@
         "name": "OTA frissítési állapot"
       },
       "charger_state": {
-        "name": "Töltő állapota"
+        "name": "Töltő állapot"
       },
       "charger_connection": {
-        "name": "Töltő csatlakozási állapota"
+        "name": "Töltő csatlakozási állapot"
       },
       "charging_update_time": {
         "name": "Töltés utolsó frissítése"
@@ -229,13 +229,13 @@
         "name": "Hűtőszekrény"
       },
       "refrigerator_door_state": {
-        "name": "Hűtőszekrény ajtaja"
+        "name": "Hűtőszekrény ajtó"
       },
-      "last_updated": {
-        "name": "Legutóbb frissítve"
+	  "last_updated": {
+        "name": "Utolsó frissítés"
       },
       "gps_last_updated": {
-        "name": "GPS legutóbb frissítve"
+        "name": "GPS utolsó frissítés"
       }
     },
     "binary_sensor": {
@@ -243,7 +243,7 @@
         "name": "Elérhető"
       },
       "is_charging": {
-        "name": "Töltés"
+        "name": "Töltés folyamatban"
       },
       "is_any_door_open": {
         "name": "Ajtók"
@@ -252,7 +252,7 @@
         "name": "Ablakok"
       },
       "is_locked": {
-        "name": "Bezárt"
+        "name": "Zárva"
       },
       "charger_connected": {
         "name": "Töltő csatlakoztatva"
@@ -318,18 +318,18 @@
         "name": "Töltő fűtés"
       },
       "vehicle_state": {
-        "name": "Jármű bekapcsolva"
+        "name": "Jármű üzemben"
       }
     },
     "button": {
       "flash_lights": {
-        "name": "Fényjel"
+        "name": "Villantás"
       },
       "find_car": {
         "name": "Autó keresése"
       },
       "close_windows": {
-        "name": "Zárja be az ablakokat"
+        "name": "Ablakok bezására"
       }
     },
     "select": {
@@ -342,7 +342,7 @@
         }
       },
       "driver_seat_ventilation": {
-        "name": "Vezetőülés szellőzése",
+        "name": "Vezetőülés szellőzés",
         "state": {
           "off": "Ki",
           "low": "Alacsony",
@@ -358,7 +358,7 @@
         }
       },
       "passenger_seat_ventilation": {
-        "name": "Az utasülés szellőzése",
+        "name": "Utasülés szellőzés",
         "state": {
           "off": "Ki",
           "low": "Alacsony",
@@ -374,7 +374,7 @@
         }
       },
       "rear_left_seat_ventilation": {
-        "name": "Bal hátsó ülés szellőzése",
+        "name": "Bal hátsó ülésszellőzés",
         "state": {
           "off": "Ki",
           "low": "Alacsony",
@@ -390,7 +390,7 @@
         }
       },
       "rear_right_seat_ventilation": {
-        "name": "Jobb hátsó ülés szellőzése",
+        "name": "Jobb hátsó ülésszellőzés",
         "state": {
           "off": "Ki",
           "low": "Alacsony",
@@ -400,10 +400,10 @@
     },
     "switch": {
       "battery_heat": {
-        "name": "Akkumulátor hő"
+        "name": "Akkumulátor előfűtése"
       },
       "car_on": {
-        "name": "Autó be"
+        "name": "Autó indítása"
       },
       "steering_wheel_heat": {
         "name": "Kormányfűtés"
@@ -411,7 +411,7 @@
     },
     "climate": {
       "climate": {
-        "name": "Éghajlat",
+        "name": "Klíma",
         "state_attributes": {
           "preset_mode": {
             "state": {
@@ -424,12 +424,12 @@
     },
     "lock": {
       "lock": {
-        "name": "Zár"
+        "name": "Lezárás"
       }
     },
     "device_tracker": {
       "location": {
-        "name": "Elhelyezkedés"
+        "name": "Lokáció"
       }
     }
   }

@@ -467,10 +467,6 @@ class BydApi:
                 if isinstance(result, RemoteControlResult) and vin and command:
                     self._store_remote_result(vin, command, result)
                 return result
-            except BydAuthenticationError as exc:
-                if vin and command:
-                    self._store_remote_result(vin, command, None, exc)
-                raise ConfigEntryAuthFailed(str(exc)) from exc
             except BydSessionExpiredError as exc:
                 if vin and command:
                     self._store_remote_result(vin, command, None, exc)
@@ -480,6 +476,10 @@ class BydApi:
                         self._hass.config_entries.async_reload(self._entry.entry_id)
                     )
                 raise UpdateFailed(str(exc)) from exc
+            except BydAuthenticationError as exc:
+                if vin and command:
+                    self._store_remote_result(vin, command, None, exc)
+                raise ConfigEntryAuthFailed(str(exc)) from exc
         except BydRemoteControlError as exc:
             if vin and command:
                 self._store_remote_result(vin, command, None, exc)
@@ -543,6 +543,8 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._active_interval = timedelta(seconds=active_interval)
         self._inactive_interval = timedelta(seconds=inactive_interval)
         self._current_interval = timedelta(seconds=poll_interval)
+        self._polling_enabled = True
+        self._force_next_refresh = False
 
     def _desired_interval(self) -> timedelta:
         """Determine telemetry polling interval from freshness recency."""
@@ -566,6 +568,24 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Expose canonical GPS freshness for sensors."""
         return self._api.get_gps_freshness(self._vin)
 
+    @property
+    def polling_enabled(self) -> bool:
+        return self._polling_enabled
+
+    def set_polling_enabled(self, enabled: bool) -> None:
+        """Enable/disable scheduled polling for this VIN.
+
+        When disabled, the coordinator will keep its last cached data and
+        only refresh when explicitly forced.
+        """
+        self._polling_enabled = bool(enabled)
+        self.update_interval = self._current_interval if self._polling_enabled else None
+
+    async def async_force_refresh(self) -> None:
+        """Force a refresh even if not due or polling disabled."""
+        self._force_next_refresh = True
+        await self.async_request_refresh()
+
     def _adjust_interval(self) -> None:
         """Apply adaptive interval for this VIN."""
         new_interval = self._desired_interval()
@@ -578,7 +598,8 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             new_interval.total_seconds(),
         )
         self._current_interval = new_interval
-        self.update_interval = new_interval
+        if self._polling_enabled:
+            self.update_interval = new_interval
 
     def _is_due(self) -> bool:
         """Return True when telemetry poll should hit the cloud."""
@@ -691,8 +712,17 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_update_data(self) -> dict[str, Any]:
         _LOGGER.debug("Telemetry refresh started: vin=%s", self._vin[-6:])
+        force = self._force_next_refresh
+        self._force_next_refresh = False
+
+        if not self._polling_enabled and not force:
+            # Keep cached data while polling is disabled.
+            if isinstance(self.data, dict):
+                return self.data
+            return {"vehicles": {self._vin: self._vehicle}}
+
         self._adjust_interval()
-        if not self._is_due() and isinstance(self.data, dict):
+        if not force and not self._is_due() and isinstance(self.data, dict):
             freshness = self._api.get_telemetry_freshness(self._vin)
             age = (
                 (datetime.now(tz=UTC) - freshness).total_seconds()
@@ -886,6 +916,20 @@ class BydGpsUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._inactive_interval = timedelta(seconds=inactive_interval)
         self._current_interval = timedelta(seconds=poll_interval)
         self._last_smart_state: bool | None = None
+        self._polling_enabled = True
+        self._force_next_refresh = False
+
+    @property
+    def polling_enabled(self) -> bool:
+        return self._polling_enabled
+
+    def set_polling_enabled(self, enabled: bool) -> None:
+        self._polling_enabled = bool(enabled)
+        self.update_interval = self._current_interval if self._polling_enabled else None
+
+    async def async_force_refresh(self) -> None:
+        self._force_next_refresh = True
+        await self.async_request_refresh()
 
     def _is_vehicle_moving(self, data: dict[str, Any]) -> bool:
         """Check if this VIN is moving based on known speed data."""
@@ -960,12 +1004,21 @@ class BydGpsUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 new_interval.total_seconds(),
             )
             self._current_interval = new_interval
-            self.update_interval = new_interval
+            if self._polling_enabled:
+                self.update_interval = new_interval
 
     async def _async_update_data(self) -> dict[str, Any]:
         _LOGGER.debug("GPS refresh started: vin=%s", self._vin[-6:])
+        force = self._force_next_refresh
+        self._force_next_refresh = False
+
+        if not self._polling_enabled and not force:
+            if isinstance(self.data, dict):
+                return self.data
+            return {"vehicles": {self._vin: self._vehicle}}
+
         self._adjust_interval()
-        if not self._is_due() and isinstance(self.data, dict):
+        if not force and not self._is_due() and isinstance(self.data, dict):
             freshness = self._api.get_gps_freshness(self._vin)
             age = (
                 (datetime.now(tz=UTC) - freshness).total_seconds()
@@ -997,7 +1050,6 @@ class BydGpsUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             try:
                 gps = await client.get_gps_info(
                     self._vin,
-                    stale_after=self._current_interval.total_seconds(),
                 )
             except auth_errors:
                 raise

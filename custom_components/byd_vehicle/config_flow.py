@@ -21,6 +21,7 @@ from pybyd.config import BydConfig
 
 from .const import (
     BASE_URLS,
+    CLIMATE_DURATION_OPTIONS,
     CONF_BASE_URL,
     CONF_CLIMATE_DURATION,
     CONF_CONTROL_PIN,
@@ -43,12 +44,10 @@ from .const import (
     DEFAULT_POLL_INTERVAL,
     DEFAULT_SMART_GPS_POLLING,
     DOMAIN,
-    MAX_CLIMATE_DURATION,
     MAX_GPS_ACTIVE_INTERVAL,
     MAX_GPS_INACTIVE_INTERVAL,
     MAX_GPS_POLL_INTERVAL,
     MAX_POLL_INTERVAL,
-    MIN_CLIMATE_DURATION,
     MIN_GPS_ACTIVE_INTERVAL,
     MIN_GPS_INACTIVE_INTERVAL,
     MIN_GPS_POLL_INTERVAL,
@@ -62,6 +61,61 @@ _LOGGER = logging.getLogger(__name__)
 def _bounded_int(min_value: int, max_value: int) -> vol.All:
     """Build an integer validator with explicit bounds."""
     return vol.All(vol.Coerce(int), vol.Range(min=min_value, max=max_value))
+
+
+_CLIMATE_DURATION_LABELS: dict[int, str] = {
+    minutes: f"{minutes} min" for minutes in CLIMATE_DURATION_OPTIONS
+}
+_CLIMATE_DURATION_LEGACY_CODE_TO_MINUTES: dict[int, int] = {
+    1: 10,
+    2: 15,
+    3: 20,
+    4: 25,
+    5: 30,
+}
+
+
+def _normalize_climate_duration_minutes(value: Any) -> int:
+    """Normalize stored climate duration values to integer minutes.
+
+    Backwards compatible with older entries that stored a raw BYD timeSpan
+    *code* (1..5) or arbitrary integers.
+    """
+    if value is None:
+        return DEFAULT_CLIMATE_DURATION
+    try:
+        raw = int(value)
+    except (TypeError, ValueError):
+        return DEFAULT_CLIMATE_DURATION
+
+    if raw in CLIMATE_DURATION_OPTIONS:
+        return raw
+    if raw in _CLIMATE_DURATION_LEGACY_CODE_TO_MINUTES:
+        return _CLIMATE_DURATION_LEGACY_CODE_TO_MINUTES[raw]
+    return DEFAULT_CLIMATE_DURATION
+
+
+def _climate_duration_default_label(value: Any) -> str:
+    minutes = _normalize_climate_duration_minutes(value)
+    return _CLIMATE_DURATION_LABELS.get(
+        minutes,
+        _CLIMATE_DURATION_LABELS[DEFAULT_CLIMATE_DURATION],
+    )
+
+
+def _climate_duration_label_to_minutes(label: Any) -> int:
+    if isinstance(label, int):
+        return _normalize_climate_duration_minutes(label)
+    if not isinstance(label, str):
+        return DEFAULT_CLIMATE_DURATION
+    stripped = label.strip()
+    if stripped in _CLIMATE_DURATION_LABELS.values():
+        # "10 min" -> 10
+        try:
+            return int(stripped.split(" ", 1)[0])
+        except (TypeError, ValueError, IndexError):
+            return DEFAULT_CLIMATE_DURATION
+    return _normalize_climate_duration_minutes(stripped)
 
 
 async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
@@ -155,11 +209,10 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                 ),
                 vol.Optional(
                     CONF_CLIMATE_DURATION,
-                    default=defaults.get(
-                        CONF_CLIMATE_DURATION,
-                        DEFAULT_CLIMATE_DURATION,
+                    default=_climate_duration_default_label(
+                        defaults.get(CONF_CLIMATE_DURATION, DEFAULT_CLIMATE_DURATION)
                     ),
-                ): _bounded_int(MIN_CLIMATE_DURATION, MAX_CLIMATE_DURATION),
+                ): vol.In(list(_CLIMATE_DURATION_LABELS.values())),
                 vol.Optional(
                     CONF_DEBUG_DUMPS,
                     default=defaults.get(
@@ -272,7 +325,9 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                         CONF_GPS_INACTIVE_INTERVAL: user_input[
                             CONF_GPS_INACTIVE_INTERVAL
                         ],
-                        CONF_CLIMATE_DURATION: user_input[CONF_CLIMATE_DURATION],
+                        CONF_CLIMATE_DURATION: _climate_duration_label_to_minutes(
+                            user_input[CONF_CLIMATE_DURATION]
+                        ),
                         CONF_DEBUG_DUMPS: user_input[CONF_DEBUG_DUMPS],
                     }
 
@@ -307,7 +362,9 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                         CONF_GPS_INACTIVE_INTERVAL: user_input[
                             CONF_GPS_INACTIVE_INTERVAL
                         ],
-                        CONF_CLIMATE_DURATION: user_input[CONF_CLIMATE_DURATION],
+                        CONF_CLIMATE_DURATION: _climate_duration_label_to_minutes(
+                            user_input[CONF_CLIMATE_DURATION]
+                        ),
                         CONF_DEBUG_DUMPS: user_input[CONF_DEBUG_DUMPS],
                     },
                 )
@@ -340,6 +397,14 @@ class BydVehicleOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         if user_input is not None:
+            # Store minutes (int) rather than the human label.
+            if CONF_CLIMATE_DURATION in user_input:
+                user_input = {
+                    **user_input,
+                    CONF_CLIMATE_DURATION: _climate_duration_label_to_minutes(
+                        user_input[CONF_CLIMATE_DURATION]
+                    ),
+                }
             return self.async_create_entry(title="", data=user_input)
 
         data_schema = vol.Schema(
@@ -379,10 +444,12 @@ class BydVehicleOptionsFlow(config_entries.OptionsFlow):
                 ),
                 vol.Optional(
                     CONF_CLIMATE_DURATION,
-                    default=self._config_entry.options.get(
-                        CONF_CLIMATE_DURATION, DEFAULT_CLIMATE_DURATION
+                    default=_climate_duration_default_label(
+                        self._config_entry.options.get(
+                            CONF_CLIMATE_DURATION, DEFAULT_CLIMATE_DURATION
+                        )
                     ),
-                ): _bounded_int(MIN_CLIMATE_DURATION, MAX_CLIMATE_DURATION),
+                ): vol.In(list(_CLIMATE_DURATION_LABELS.values())),
                 vol.Optional(
                     CONF_DEBUG_DUMPS,
                     default=self._config_entry.options.get(

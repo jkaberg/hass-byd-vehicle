@@ -35,10 +35,13 @@ DEFAULT_GPS_POLL_INTERVAL = 300
 DEFAULT_SMART_GPS_POLLING = False
 DEFAULT_GPS_ACTIVE_INTERVAL = 30
 DEFAULT_GPS_INACTIVE_INTERVAL = 600
-DEFAULT_CLIMATE_DURATION = 1
+DEFAULT_CLIMATE_DURATION = 10
 DEFAULT_DEBUG_DUMPS = False
 DEFAULT_COUNTRY = "Netherlands"
 DEFAULT_LANGUAGE = "en"
+
+# Duration dropdown values (minutes) for remote climate start.
+CLIMATE_DURATION_OPTIONS: tuple[int, ...] = (10, 15, 20, 25, 30)
 
 MIN_POLL_INTERVAL = 30
 MAX_POLL_INTERVAL = 900
@@ -48,8 +51,6 @@ MIN_GPS_ACTIVE_INTERVAL = 10
 MAX_GPS_ACTIVE_INTERVAL = 300
 MIN_GPS_INACTIVE_INTERVAL = 60
 MAX_GPS_INACTIVE_INTERVAL = 3600
-MIN_CLIMATE_DURATION = 1
-MAX_CLIMATE_DURATION = 60
 
 # https://github.com/jkaberg/hass-byd-vehicle/issues/12
 BASE_URLS: dict[str, str] = {
@@ -98,9 +99,11 @@ COUNTRY_OPTIONS: dict[str, tuple[str, str]] = {
     "Poland": ("PL", "pl"),
     "South Africa": ("ZA", "en"),
     "South Korea": ("KR", "ko"),
+    "Spain": ("ES", "es"),
     "Sweden": ("SE", "sv"),
     "Thailand": ("TH", "th"),
     "Turkey": ("TR", "tr"),
     "United Kingdom": ("GB", "en"),
     "Uzbekistan": ("UZ", "uz"),
+    "Portugal": ("PT", "pt"),
 }

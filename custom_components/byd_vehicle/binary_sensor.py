@@ -1,5 +1,9 @@
 """Binary sensors for BYD Vehicle."""
 
+# Pylint (v4+) can mis-infer dataclass-generated __init__ signatures for entity
+# descriptions, causing false-positive E1123 errors.
+# pylint: disable=unexpected-keyword-arg
+
 from __future__ import annotations
 
 from collections.abc import Callable
