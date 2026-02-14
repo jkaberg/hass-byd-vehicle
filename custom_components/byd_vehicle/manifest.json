@@ -11,5 +11,5 @@
   "requirements": [
     "pybyd>=0.0.29"
   ],
-  "version": "0.0.34"
+  "version": "0.0.35"
 }
