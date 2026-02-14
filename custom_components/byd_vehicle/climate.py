@@ -222,6 +222,9 @@ class BydClimate(CoordinatorEntity[BydDataUpdateCoordinator], ClimateEntity):
         self._command_pending = True
         self.async_write_ha_state()
 
+        # Refresh coordinator so the car-on switch (and HVAC snapshot) updates quickly.
+        await self.coordinator.async_force_refresh()
+
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set target temperature."""
         temp = kwargs.get(ATTR_TEMPERATURE)
