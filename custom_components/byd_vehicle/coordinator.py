@@ -76,6 +76,9 @@ def _hydrate_store_model(
     if not snapshot:
         return None
 
+    if not isinstance(snapshot, dict):
+        return None
+
     try:
         # Pydantic v2 models support `model_validate`.
         return model.model_validate(snapshot)
