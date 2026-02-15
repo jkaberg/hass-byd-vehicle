@@ -103,21 +103,6 @@ def _minutes_to_full(obj: Any) -> int | None:
     return h * 60 + m
 
 
-def _epoch_attr_to_datetime(attr: str) -> Callable[[Any], datetime | None]:
-    """Create a converter for an epoch attr (seconds or milliseconds)."""
-
-    def _convert(obj: Any) -> datetime | None:
-        ts = getattr(obj, attr, None)
-        if ts is None:
-            return None
-        ts_int = int(ts)
-        if ts_int > 1_000_000_000_000:
-            ts_int = int(ts_int / 1000)
-        return datetime.fromtimestamp(ts_int, tz=UTC)
-
-    return _convert
-
-
 def _round_int_attr(attr: str) -> Callable[[Any], int | None]:
     """Create a converter that rounds a numeric attribute to an integer."""
 
@@ -656,7 +641,6 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         source="charging",
         attr_key="update_time",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=_epoch_attr_to_datetime("update_time"),
         icon="mdi:clock-outline",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
