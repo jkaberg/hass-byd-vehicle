@@ -41,9 +41,14 @@ from .coordinator import (
 
 
 def _normalize_epoch(value: Any) -> datetime | None:
-    """Convert epoch-like values (sec/ms) to UTC datetime."""
+    """Convert epoch-like values (sec/ms) or datetime to UTC datetime."""
     if value is None:
         return None
+    # pyBYD already parses timestamps into datetime via BydTimestamp.
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
     try:
         ts = float(value)
     except (TypeError, ValueError):

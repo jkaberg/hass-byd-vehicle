@@ -408,7 +408,7 @@
         "name": "배터리 히팅"
       },
       "car_on": {
-        "name": "자동차 켜짐"
+        "name": "에어컨 켜짐"
       },
       "steering_wheel_heat": {
         "name": "스티어링 휠 가열"

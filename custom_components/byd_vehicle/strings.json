@@ -217,7 +217,7 @@
     },
     "switch": {
       "battery_heat": { "name": "Battery heat" },
-      "car_on": { "name": "Car on" },
+      "car_on": { "name": "A/C on" },
       "steering_wheel_heat": { "name": "Steering wheel heating" },
       "disable_polling": { "name": "Disable polling" }
     },
