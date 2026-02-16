@@ -153,6 +153,9 @@ class BydCarOnSwitch(BydVehicleEntity, SwitchEntity):
         """Return whether car-on (climate) is on."""
         if self._command_pending:
             return self._last_state
+        # Vehicle off → climate cannot be running (defence-in-depth).
+        if not self._is_vehicle_on():
+            return False
         hvac = self._get_hvac_status()
         if hvac is not None:
             return bool(hvac.is_ac_on)
@@ -231,6 +234,9 @@ class BydSteeringWheelHeatSwitch(BydVehicleEntity, SwitchEntity):
     def is_on(self) -> bool | None:
         if self._command_pending:
             return self._last_state
+        # Vehicle off → steering wheel heat cannot be running.
+        if not self._is_vehicle_on():
+            return False
         hvac = self._get_hvac_status()
         if hvac is not None:
             val = hvac.is_steering_wheel_heating

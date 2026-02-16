@@ -116,6 +116,11 @@ class BydClimate(BydVehicleEntity, ClimateEntity):
         # After a command, prefer optimistic state until coordinator refreshes
         if self._command_pending:
             return self._last_mode
+        # If the vehicle is off, HVAC cannot be running regardless of
+        # cached data (defence-in-depth; coordinator already omits stale
+        # HVAC, but guard here too).
+        if not self._is_vehicle_on():
+            return HVACMode.OFF
         hvac = self._get_hvac_status()
         if hvac is not None:
             return HVACMode.HEAT_COOL if hvac.is_ac_on else HVACMode.OFF

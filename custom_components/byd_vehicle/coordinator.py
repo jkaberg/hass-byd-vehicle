@@ -156,12 +156,6 @@ class BydApi:
         callback) which receives the already-parsed model — so we
         deliberately skip it here to avoid duplicate work.
         """
-        _LOGGER.debug(
-            "MQTT event received: event=%s, vin=%s, keys=%s",
-            event,
-            vin[-6:] if vin else "-",
-            list(respond_data.keys()) if respond_data else [],
-        )
 
         # Debug dump every MQTT event.
         if self._debug_dumps_enabled:
@@ -464,13 +458,17 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             hvac_map: dict[str, Any] = {}
             charging_map: dict[str, Any] = {}
 
+            vehicle_on = self._is_vehicle_on(realtime or self._last_realtime)
+
             effective_realtime = realtime or self._last_realtime
             if effective_realtime is not None:
                 realtime_map[self._vin] = effective_realtime
             effective_energy = energy
             if effective_energy is not None:
                 energy_map[self._vin] = effective_energy
-            effective_hvac = hvac or self._last_hvac
+            # Only fall back to cached HVAC when the vehicle is on;
+            # stale HVAC data is meaningless once the vehicle turns off.
+            effective_hvac = hvac or (self._last_hvac if vehicle_on else None)
             if effective_hvac is not None:
                 hvac_map[self._vin] = effective_hvac
             effective_charging = charging or self._last_charging

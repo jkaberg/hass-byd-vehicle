@@ -78,6 +78,13 @@ class BydVehicleEntity(CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]])
         """Return the model object for the given data source and this VIN."""
         return self.coordinator.data.get(source, {}).get(self._vin)
 
+    def _is_vehicle_on(self) -> bool:
+        """Return True when the realtime feed reports the vehicle is on."""
+        realtime = self._get_realtime()
+        if realtime is None:
+            return False
+        return bool(getattr(realtime, "is_vehicle_on", False))
+
     # ------------------------------------------------------------------
     # Optimistic command dispatch
     # ------------------------------------------------------------------
