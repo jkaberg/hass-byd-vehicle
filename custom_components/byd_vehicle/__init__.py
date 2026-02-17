@@ -133,6 +133,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinators[vin] = telemetry_coordinator
         gps_coordinators[vin] = gps_coordinator
 
+    # Wire MQTT push early so vehicleInfo messages arriving during the
+    # first refresh are dispatched to coordinators instead of being dropped.
+    api.register_coordinators(coordinators)
+
     try:
         _LOGGER.debug("Running first refresh for BYD telemetry coordinators")
         for coordinator in coordinators.values():
@@ -142,9 +146,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await gps_coordinator.async_config_entry_first_refresh()
     except Exception as exc:  # noqa: BLE001
         raise ConfigEntryNotReady from exc
-
-    # Wire MQTT push so realtime updates dispatch to coordinators.
-    api.register_coordinators(coordinators)
 
     hass.data[DOMAIN][entry.entry_id] = {
         "api": api,
