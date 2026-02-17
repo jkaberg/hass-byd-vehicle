@@ -48,8 +48,15 @@ jobs:
             echo "Version is up-to-date"
             echo "needs_update=false" >> $GITHUB_OUTPUT
           else
-            echo "New version available: $LATEST (current: $CURRENT)"
-            echo "needs_update=true" >> $GITHUB_OUTPUT
+            # Use version-aware comparison to determine if LATEST is newer than CURRENT
+            FIRST_SORTED="$(printf '%s\n%s\n' "$CURRENT" "$LATEST" | sort -V | head -n1)"
+            if [ "$FIRST_SORTED" = "$CURRENT" ] && [ "$LATEST" != "$CURRENT" ]; then
+              echo "Newer version available: $LATEST (current: $CURRENT)"
+              echo "needs_update=true" >> $GITHUB_OUTPUT
+            else
+              echo "Current version ($CURRENT) is newer than or equal to latest tag ($LATEST); no update needed"
+              echo "needs_update=false" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Update manifest.json
