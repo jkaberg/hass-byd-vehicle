@@ -65,10 +65,16 @@ jobs:
           manifest_path = Path("custom_components/byd_vehicle/manifest.json")
           data = json.loads(manifest_path.read_text(encoding="utf-8"))
           
-          # Update the pybyd requirement
+          # Update the pybyd requirement while preserving other requirements
           new_version = "${{ steps.pybyd.outputs.latest_tag }}"
-          data["requirements"] = [f"pybyd>={new_version}"]
-          
+          for i, req in enumerate(data.get("requirements", [])):
+              if isinstance(req, str) and req.startswith("pybyd"):
+                  data["requirements"][i] = f"pybyd>={new_version}"
+                  break
+          else:
+              # If no existing pybyd requirement is found, append it
+              data.setdefault("requirements", []).append(f"pybyd>={new_version}")
+           
           manifest_path.write_text(
               json.dumps(data, indent=2, ensure_ascii=True) + "\n",
               encoding="utf-8",
