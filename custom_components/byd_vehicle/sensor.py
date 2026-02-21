@@ -646,6 +646,17 @@ class BydSensor(BydVehicleEntity, SensorEntity):
         return desc_unit
 
     @property
+    def device_class(self) -> SensorDeviceClass | None:
+        """Avoid HA auto-converting speed/distance when imperial mode is forced."""
+        base = self.entity_description.device_class
+        if self._distance_units_mode() == DISTANCE_UNIT_MODE_IMPERIAL and base in (
+            SensorDeviceClass.DISTANCE,
+            SensorDeviceClass.SPEED,
+        ):
+            return None
+        return base
+
+    @property
     def native_value(self) -> Any:
         """Return the sensor value."""
         value = self._resolve_value()
