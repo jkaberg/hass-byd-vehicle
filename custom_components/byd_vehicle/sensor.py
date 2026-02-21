@@ -370,14 +370,14 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         source="realtime",
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         icon="mdi:gas-station",
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     BydSensorDescription(
         key="oil_percent",
         source="realtime",
         native_unit_of_measurement=PERCENTAGE,
         icon="mdi:gas-station",
-        entity_registry_enabled_default=False,
+        entity_registry_enabled_default=True,
     ),
     BydSensorDescription(
         key="total_oil",
