@@ -131,12 +131,18 @@
         "name": "Gear position"
       },
       "charging_state": {
-        "name": "Charging state"
+        "name": "Charging state (raw code)"
       },
       "charge_state": {
-        "name": "Charge state"
+        "name": "Charge state (raw code)"
+      },
+      "charge_state_text": {
+        "name": "Charge status"
       },
       "wait_status": {
+        "name": "Charge wait status (raw code)"
+      },
+      "wait_status_text": {
         "name": "Charge wait status"
       },
       "full_hour": {

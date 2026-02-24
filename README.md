@@ -109,6 +109,10 @@ diagnostics**. If you automate against them, prefer combining them with:
 - location/home state
 - explicit user notifications/fallbacks
 
+To make this easier, the integration also exposes human-readable diagnostic
+labels for these codes (`charge_state_text` and `wait_status_text`) while
+keeping the raw code sensors available.
+
 ### Debug dumps
 
 When **Debug dump API responses** is enabled in integration options, BYD API

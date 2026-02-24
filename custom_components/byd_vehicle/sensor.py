@@ -79,6 +79,44 @@ def _round_int_attr(attr: str) -> Callable[[Any], int | None]:
     return _convert
 
 
+def _as_int(value: Any) -> int | None:
+    """Convert enum/int-like values to int when possible."""
+    if value is None:
+        return None
+    enum_value = getattr(value, "value", None)
+    if isinstance(enum_value, int):
+        return enum_value
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _charge_state_text(obj: Any) -> str | None:
+    """Return a human-readable charge_state label."""
+    code = _as_int(getattr(obj, "charge_state", None))
+    if code is None:
+        return None
+    mapping = {
+        15: "unplugged",
+        -1: "plugged_in_waiting",
+        1: "charging_active",
+    }
+    return mapping.get(code, f"unknown_{code}")
+
+
+def _wait_status_text(obj: Any) -> str | None:
+    """Return a human-readable wait_status label."""
+    code = _as_int(getattr(obj, "wait_status", None))
+    if code is None:
+        return None
+    mapping = {
+        1: "waiting_for_schedule",
+        0: "schedule_window_active",
+    }
+    return mapping.get(code, f"unknown_{code}")
+
+
 SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     # =============================================
     # Realtime: primary sensors (enabled by default)
@@ -246,11 +284,27 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     BydSensorDescription(
+        key="charge_state_text",
+        source="realtime",
+        icon="mdi:ev-station",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_charge_state_text,
+    ),
+    BydSensorDescription(
         key="wait_status",
         source="realtime",
         icon="mdi:timer-sand",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BydSensorDescription(
+        key="wait_status_text",
+        source="realtime",
+        icon="mdi:timer-sand",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_wait_status_text,
     ),
     BydSensorDescription(
         key="full_hour",
