@@ -48,7 +48,7 @@ body:
     id: region
     attributes:
       label: BYD app region and country
-      placeholder: Example: EU / Sweden
+      placeholder: "Example: EU / Sweden"
     validations:
       required: true
 
