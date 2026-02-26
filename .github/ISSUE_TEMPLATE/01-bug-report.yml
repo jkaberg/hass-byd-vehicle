@@ -1,0 +1,62 @@
+name: Bug report
+description: File a bug report.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report.
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: Also tell us what you expected to happen.
+      placeholder: Tell us what you see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Trigger ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: 2026.x.x
+    validations:
+      required: true
+
+  - type: input
+    id: integration_version
+    attributes:
+      label: Integration version
+      placeholder: Version from HACS or manifest
+    validations:
+      required: true
+
+  - type: input
+    id: region
+    attributes:
+      label: BYD app region/country
+      placeholder: Example: EU / Sweden
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please paste relevant logs only and redact VIN, tokens, email, and account identifiers.
+      render: shell
+    validations:
+      required: true
