@@ -1,7 +1,7 @@
 name: Bug report
 description: File a bug report.
 title: "[Bug]: "
-labels: [bug]
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
@@ -9,7 +9,7 @@ body:
         Thanks for taking the time to fill out this bug report.
 
   - type: textarea
-    id: what_happened
+    id: what-happened
     attributes:
       label: What happened?
       description: Also tell us what you expected to happen.
@@ -18,7 +18,7 @@ body:
       required: true
 
   - type: textarea
-    id: steps
+    id: steps-to-reproduce
     attributes:
       label: Steps to reproduce
       placeholder: |
@@ -29,7 +29,7 @@ body:
       required: true
 
   - type: input
-    id: ha_version
+    id: home-assistant-version
     attributes:
       label: Home Assistant version
       placeholder: 2026.x.x
@@ -37,7 +37,7 @@ body:
       required: true
 
   - type: input
-    id: integration_version
+    id: integration-version
     attributes:
       label: Integration version
       placeholder: Version from HACS or manifest
@@ -47,13 +47,13 @@ body:
   - type: input
     id: region
     attributes:
-      label: BYD app region/country
+      label: BYD app region and country
       placeholder: Example: EU / Sweden
     validations:
       required: true
 
   - type: textarea
-    id: logs
+    id: relevant-log-output
     attributes:
       label: Relevant log output
       description: Please paste relevant logs only and redact VIN, tokens, email, and account identifiers.
