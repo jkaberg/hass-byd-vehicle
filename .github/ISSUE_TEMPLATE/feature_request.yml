@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest an improvement for the BYD vehicle integration.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user problem are you trying to solve?
+      placeholder: Clear and concise problem description.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should be added or changed?
+      placeholder: Describe the proposed behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: User impact
+      description: Why this matters and who benefits.
+      placeholder: Expected benefit for users.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds or alternative approaches.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Optional logs, screenshots, or references.

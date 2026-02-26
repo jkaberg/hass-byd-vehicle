@@ -131,3 +131,14 @@ Where to view logs:
 
 Tip: enable debug logging only while troubleshooting, as it can produce large
 log volumes and may include sensitive vehicle metadata.
+
+## Contributing
+
+- Open issues with the provided templates:
+  - Bug report: `.github/ISSUE_TEMPLATE/bug_report.yml`
+  - Feature request: `.github/ISSUE_TEMPLATE/feature_request.yml`
+- Use Discussions for support/how-to questions: https://github.com/jkaberg/hass-byd-vehicle/discussions
+- Pull requests must use `.github/pull_request_template.md` and include:
+  - Relevant **redacted logs** (remove VIN, tokens, email, and account identifiers)
+  - A clear **end-to-end test scenario** and observed result for the functionality you add/change
+  - Confirmation that applicable local checks pass (`ruff`, `black`, `mypy`)

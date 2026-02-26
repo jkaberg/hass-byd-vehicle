@@ -1,0 +1,96 @@
+name: Bug report
+description: Report a reproducible problem with the BYD vehicle integration.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please keep this report concise and include redacted logs.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken?
+      placeholder: Short description of the issue.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps so we can reproduce the issue.
+      placeholder: |
+        1. Go to ...
+        2. Trigger ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: What happened instead?
+    validations:
+      required: true
+
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: 2026.x.x
+    validations:
+      required: true
+
+  - type: input
+    id: integration_version
+    attributes:
+      label: Integration version
+      placeholder: Version from HACS or manifest
+    validations:
+      required: true
+
+  - type: input
+    id: region
+    attributes:
+      label: BYD app region/country
+      placeholder: Example: EU / Sweden
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs (required, redacted)
+      description: Paste only relevant logs. Remove VIN, tokens, email, and other sensitive data.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Optional screenshots, traces, or links to debug dump details.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I have reproduced this issue on the latest integration version.
+          required: true
+        - label: I included relevant redacted logs.
+          required: true
