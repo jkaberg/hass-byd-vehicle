@@ -12,8 +12,24 @@ from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pybyd import minutes_to_time_span
 from pybyd.models.control import ClimateStartParams
+
+try:
+    from pybyd import minutes_to_time_span
+except ImportError:
+    def minutes_to_time_span(minutes: int) -> int:
+        """Convert climate duration minutes to BYD time_span code.
+
+        Backwards compatibility for pybyd versions where helper export was removed.
+        """
+        mapping = {
+            10: 1,
+            15: 2,
+            20: 3,
+            25: 4,
+            30: 5,
+        }
+        return mapping.get(int(minutes), 5)
 
 from .const import (
     CONF_CLIMATE_DURATION,
