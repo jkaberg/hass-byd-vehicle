@@ -11,6 +11,8 @@ Home Assistant custom integration for BYD vehicles, powered by [pyBYD](https://g
 
 ### Option 1: HACS (Custom Repository)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jkaberg&repository=hass-byd-vehicle&category=Integration)
+
 1. Open HACS → **Integrations**.
 2. Open the menu (**⋮**) → **Custom repositories**.
 3. Add `https://github.com/jkaberg/hass-byd-vehicle` as **Integration**.
