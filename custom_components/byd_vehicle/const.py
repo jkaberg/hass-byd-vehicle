@@ -374,3 +374,5 @@ def get_country_connection_settings_by_code(country_code: str) -> tuple[str, str
     _country_name, language = COUNTRY_BY_CODE[normalized_code]
     node_id = COUNTRY_TO_NODE[normalized_code]
     return normalized_code, language, NODE_METADATA[node_id]["api_base_url"]
+
+CONF_ABRP_TOKEN = "abrp_token"

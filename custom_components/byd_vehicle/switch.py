@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
@@ -12,10 +13,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from pybyd.models.vehicle import Vehicle
 
-from .const import DOMAIN
+from .abrp import async_send_telemetry
+from .const import CONF_ABRP_TOKEN, DOMAIN
 from .coordinator import BydDataUpdateCoordinator
 from .entity import BydActionEntity, BydVehicleEntity
 
+_LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -31,6 +34,10 @@ async def async_setup_entry(
     for vin, coordinator in coordinators.items():
         gps_coordinator = gps_coordinators.get(vin)
         vehicle = coordinator.vehicle
+        
+        # Add our new ABRP switch
+        entities.append(BYDABRPSwitch(coordinator, gps_coordinator, vin, vehicle))
+
         entities.append(
             BydDisablePollingSwitch(coordinator, gps_coordinator, vin, vehicle)
         )
@@ -42,7 +49,6 @@ async def async_setup_entry(
             entities.append(BydSteeringWheelHeatSwitch(coordinator, vin, vehicle))
 
     async_add_entities(entities)
-
 
 class BydBatteryHeatSwitch(BydActionEntity, SwitchEntity):
     """Representation of the BYD battery heat toggle.
@@ -299,3 +305,115 @@ class BydDisablePollingSwitch(BydVehicleEntity, RestoreEntity, SwitchEntity):
         """Re-enable polling."""
         self._disabled = False
         await self._apply()
+
+class BYDABRPSwitch(SwitchEntity):
+    """Switch to control ABRP synchronization."""
+
+    def __init__(self, coordinator, gps_coordinator, vin, vehicle):
+        self.coordinator = coordinator
+        self.gps_coordinator = gps_coordinator
+        self._vin = vin
+        self._vehicle = vehicle
+        name = getattr(coordinator, "vehicle_name", "BYD")
+        self._attr_name = f"ABRP Sync {name}"
+        self._attr_unique_id = f"{vin}_abrp_sync"
+        self._attr_is_on = False
+
+    @property
+    def is_on(self):
+        return self._attr_is_on
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._vin)},
+            "name": getattr(self.coordinator, "vehicle_name", "BYD Vehicle"),
+            "manufacturer": "BYD",
+        }
+
+    async def async_turn_on(self, **kwargs):
+        """Turn the switch on."""
+        self._attr_is_on = True
+        
+        # Listen to BOTH coordinators to be safe
+        self.async_on_remove(self.coordinator.async_add_listener(self._handle_coordinator_update))
+        if self.gps_coordinator:
+            self.async_on_remove(self.gps_coordinator.async_add_listener(self._handle_coordinator_update))
+            
+        # KICKSTART: Send data immediately when turned on
+        self._handle_coordinator_update()
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs):
+        self._attr_is_on = False
+        self.async_write_ha_state()
+
+    def _handle_coordinator_update(self):
+        """Bridge function."""
+        if self._attr_is_on:
+            # We use call_soon_threadsafe to ensure the task starts correctly
+            self.hass.add_job(self._sync_data)
+
+    async def _sync_data(self):
+        """Fetch data from your specific HA entities."""
+        if not self._attr_is_on:
+            return
+
+        token = "YOUR_ABRP_TOKEN_GOES_HERE"
+
+        try:
+            # 1. Use your exact Entity IDs
+            soc_state = self.hass.states.get("sensor.byd_seal_battery_level")
+            odo_state = self.hass.states.get("sensor.byd_seal_odometer")
+            gps_state = self.hass.states.get("device_tracker.byd_seal_location")
+
+            # 2. Extract SOC (Battery)
+            soc = None
+            if soc_state and soc_state.state not in ["unknown", "unavailable"]:
+                soc = float(soc_state.state)
+
+            # 3. Extract Odometer (Mileage)
+            odo = None
+            if odo_state and odo_state.state not in ["unknown", "unavailable"]:
+                # We replace any commas if present and convert to float
+                odo = float(odo_state.state.replace(",", ""))
+
+            # 4. Extract GPS Coordinates from Attributes
+            lat, lon = None, None
+            if gps_state and "latitude" in gps_state.attributes:
+                lat = gps_state.attributes.get("latitude")
+                lon = gps_state.attributes.get("longitude")
+
+            # 5. Get Charging & Speed from the coordinator
+            attr = self.coordinator.data
+            rt = getattr(attr, "realtime", None)
+            is_charging = getattr(rt, "charge_status", 0) > 0 if rt else False
+            speed = getattr(rt, "speed", 0) if rt else 0
+
+            data = {
+                "soc": soc,
+                "lat": lat,
+                "lon": lon,
+                "is_charging": is_charging,
+                "odometer": odo,
+                "speed": speed,
+            }
+
+            # Log what we are about to send
+            _LOGGER.debug(
+                "ABRP Final Sync Check: SOC=%s, ODO=%s, Lat=%s, Lon=%s", 
+                soc, odo, lat, lon
+            )
+            
+            # We must have SOC and GPS to be useful for ABRP
+            if soc is not None and lat is not None:
+                await async_send_telemetry(self.hass, token, data)
+            else:
+                _LOGGER.warning(
+                    "ABRP Sync: Missing data. SOC found: %s, GPS found: %s", 
+                    "Yes" if soc is not None else "No", 
+                    "Yes" if lat is not None else "No"
+                )
+                
+        except Exception as err:
+            _LOGGER.error("ABRP Sync State Error: %s", err)
