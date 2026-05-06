@@ -37,3 +37,11 @@ fetch_energy:
       selector:
         device:
           integration: byd_vehicle
+
+start_charging:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: byd_vehicle

@@ -395,6 +395,9 @@
       },
       "force_poll": {
         "name": "Force poll"
+      },
+      "start_charging": {
+        "name": "Start charging"
       }
     },
     "select": {

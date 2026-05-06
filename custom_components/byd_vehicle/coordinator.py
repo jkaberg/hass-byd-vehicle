@@ -11,7 +11,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
@@ -26,6 +26,7 @@ from pybyd import (
     BydDataUnavailableError,
     BydEndpointNotSupportedError,
     BydRateLimitError,
+    BydRemoteControlError,
     BydSessionExpiredError,
     BydTransportError,
     CommandAckEvent,
@@ -813,6 +814,45 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
                 "Service fetch_energy failed: vin=%s, error=%s",
                 self._vin,
                 exc,
+            )
+
+    async def async_start_charging(self) -> None:
+        """Start charging immediately and refresh charging state on success.
+
+        Raises :class:`HomeAssistantError` on failure (auth, transport,
+        unsupported endpoint, polling timeout) so service callers see a
+        loud failure rather than a silent no-op.
+        """
+        if self._car is None:
+            raise HomeAssistantError(
+                f"BYD vehicle {self._vin[-6:]} not ready for charging commands"
+            )
+        try:
+            result = await self._car.start_charging()
+        except BydEndpointNotSupportedError as exc:
+            raise HomeAssistantError(
+                "start_charging not supported for this vehicle/region"
+            ) from exc
+        except BydRemoteControlError as exc:
+            raise HomeAssistantError(f"start_charging failed to settle: {exc}") from exc
+        except BydAuthenticationError as exc:
+            raise HomeAssistantError(f"start_charging failed (auth): {exc}") from exc
+        except (BydApiError, BydTransportError) as exc:
+            raise HomeAssistantError(f"start_charging failed: {exc}") from exc
+
+        _LOGGER.info(
+            "start_charging settled: vin=%s, message=%s",
+            self._vin[-6:],
+            result.message,
+        )
+
+        try:
+            await self._car.update_charging()
+            await self.async_request_refresh()
+        except Exception:  # noqa: BLE001
+            _LOGGER.debug(
+                "Post-start_charging refresh failed (non-fatal)",
+                exc_info=True,
             )
 
 

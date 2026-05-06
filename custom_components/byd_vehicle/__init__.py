@@ -326,6 +326,7 @@ _SERVICE_FETCH_GPS = "fetch_gps"
 _SERVICE_FETCH_HVAC = "fetch_hvac"
 _SERVICE_FETCH_CHARGING = "fetch_charging"
 _SERVICE_FETCH_ENERGY = "fetch_energy"
+_SERVICE_START_CHARGING = "start_charging"
 
 _ALL_SERVICES = (
     _SERVICE_FETCH_REALTIME,
@@ -333,6 +334,7 @@ _ALL_SERVICES = (
     _SERVICE_FETCH_HVAC,
     _SERVICE_FETCH_CHARGING,
     _SERVICE_FETCH_ENERGY,
+    _SERVICE_START_CHARGING,
 )
 
 
@@ -416,6 +418,11 @@ def _async_register_services(hass: HomeAssistant) -> None:
             coordinator, _ = _get_coordinators(hass, entry_id, vin)
             await coordinator.async_fetch_energy()
 
+    async def _handle_start_charging(call: ServiceCall) -> None:
+        for entry_id, vin in _resolve_vins_from_call(hass, call):
+            coordinator, _ = _get_coordinators(hass, entry_id, vin)
+            await coordinator.async_start_charging()
+
     hass.services.async_register(
         DOMAIN, _SERVICE_FETCH_REALTIME, _handle_fetch_realtime
     )
@@ -425,6 +432,9 @@ def _async_register_services(hass: HomeAssistant) -> None:
         DOMAIN, _SERVICE_FETCH_CHARGING, _handle_fetch_charging
     )
     hass.services.async_register(DOMAIN, _SERVICE_FETCH_ENERGY, _handle_fetch_energy)
+    hass.services.async_register(
+        DOMAIN, _SERVICE_START_CHARGING, _handle_start_charging
+    )
 
     _LOGGER.debug("Registered %s domain services", len(_ALL_SERVICES))
 

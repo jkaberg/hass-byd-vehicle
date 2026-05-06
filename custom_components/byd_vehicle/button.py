@@ -68,6 +68,7 @@ async def async_setup_entry(
         gps_coordinator = gps_coordinators.get(vin)
 
         entities.append(BydForcePollButton(coordinator, gps_coordinator, vin, vehicle))
+        entities.append(BydStartChargingButton(coordinator, vin, vehicle))
         for description in BUTTON_DESCRIPTIONS:
             if not coordinator.capability_available(description.capability_key):
                 continue
@@ -138,3 +139,58 @@ class BydForcePollButton(BydVehicleEntity, ButtonEntity):
                 await gps.async_force_refresh()
         except Exception as exc:  # noqa: BLE001
             raise HomeAssistantError(str(exc)) from exc
+
+
+class BydStartChargingButton(BydVehicleEntity, ButtonEntity):
+    """Button that starts charging immediately."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "start_charging"
+    _attr_icon = "mdi:play"
+
+    def __init__(
+        self,
+        coordinator: BydDataUpdateCoordinator,
+        vin: str,
+        vehicle: Vehicle,
+    ) -> None:
+        super().__init__(coordinator)
+        self._vin = vin
+        self._vehicle = vehicle
+        self._attr_unique_id = f"{vin}_button_start_charging"
+
+    @property
+    def available(self) -> bool:
+        # BYD's cloud rejects /control/smartCharge/changeChargeStatue with
+        # res=3 "Operation failure" when the vehicle is already in the
+        # target state — either already charging, or at 100 % SoC with
+        # nothing to charge (see references/changeResult.md). Hide the
+        # button in those cases so users don't get a confusing error.
+        #
+        # Prefer realtime fields (always present, drive the user-visible
+        # battery_level / charging sensors) over the charging snapshot
+        # (only refreshed on smart-charging-page polls and may be None
+        # between updates).
+        if not super().available:
+            return False
+        snapshot = self._snapshot()
+        if snapshot is None:
+            return True
+        is_charging: bool | None = None
+        if snapshot.realtime is not None:
+            is_charging = snapshot.realtime.is_charging
+        if is_charging is None and snapshot.charging is not None:
+            is_charging = snapshot.charging.is_charging
+        if is_charging:
+            return False
+        soc: float | None = None
+        if snapshot.realtime is not None:
+            soc = snapshot.realtime.elec_percent
+        if soc is None and snapshot.charging is not None:
+            soc = snapshot.charging.soc
+        if soc is not None and soc >= 100:
+            return False
+        return True
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_start_charging()
