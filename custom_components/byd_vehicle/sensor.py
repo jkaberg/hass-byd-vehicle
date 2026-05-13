@@ -390,9 +390,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         suggested_display_precision=0,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda obj: (
-            int(round(obj.temp_in_car)) if obj.temp_in_car is not None else 0
-        ),
+        value_fn=_round_int_attr("temp_in_car"),
     ),
     # Tire pressures – unit resolved dynamically from tire_press_unit;
     # kPa is the default because most BYD vehicles report tirePressUnit=3.
