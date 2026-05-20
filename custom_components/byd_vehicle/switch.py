@@ -6,7 +6,7 @@ from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -40,6 +40,10 @@ async def async_setup_entry(
             entities.append(BydBatteryHeatSwitch(coordinator, vin, vehicle))
         if coordinator.capability_available("steering_wheel_heat"):
             entities.append(BydSteeringWheelHeatSwitch(coordinator, vin, vehicle))
+
+        entities.append(BydScheduleEnabledSwitch(coordinator, vin, vehicle))
+        entities.append(BydChargeToFullSwitch(coordinator, vin, vehicle))
+        entities.append(BydRepeatDailySwitch(coordinator, vin, vehicle))
 
     async_add_entities(entities)
 
@@ -299,3 +303,141 @@ class BydDisablePollingSwitch(BydVehicleEntity, RestoreEntity, SwitchEntity):
         """Re-enable polling."""
         self._disabled = False
         await self._apply()
+
+
+class BydScheduleEnabledSwitch(BydVehicleEntity, SwitchEntity):
+    """Switch to enable/disable the charging schedule."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "schedule_enabled"
+    _attr_icon = "mdi:calendar-clock"
+
+    def __init__(
+        self,
+        coordinator: BydDataUpdateCoordinator,
+        vin: str,
+        vehicle: Vehicle,
+    ) -> None:
+        super().__init__(coordinator)
+        self._vin = vin
+        self._vehicle = vehicle
+        self._attr_unique_id = f"{vin}_switch_schedule_enabled"
+        self._optimistic_state: bool | None = None
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return True if schedule is enabled."""
+        if self._optimistic_state is not None:
+            return self._optimistic_state
+        if self.coordinator.data and self.coordinator.data.charging_schedule and self.coordinator.data.charging_schedule.charge:
+            return self.coordinator.data.charging_schedule.charge.status
+        return None
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._optimistic_state = None
+        super()._handle_coordinator_update()
+
+    async def async_turn_on(self, **_kwargs: Any) -> None:
+        """Enable schedule."""
+        self._optimistic_state = True
+        self.async_write_ha_state()
+        await self.coordinator.async_request_schedule_update("enabled", True)
+
+    async def async_turn_off(self, **_kwargs: Any) -> None:
+        """Disable schedule."""
+        self._optimistic_state = False
+        self.async_write_ha_state()
+        await self.coordinator.async_request_schedule_update("enabled", False)
+
+
+class BydChargeToFullSwitch(BydVehicleEntity, SwitchEntity):
+    """Switch to toggle whether to charge to 100% or stop at end_time."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "charge_to_full"
+    _attr_icon = "mdi:battery-charging-100"
+
+    def __init__(
+        self,
+        coordinator: BydDataUpdateCoordinator,
+        vin: str,
+        vehicle: Vehicle,
+    ) -> None:
+        super().__init__(coordinator)
+        self._vin = vin
+        self._vehicle = vehicle
+        self._attr_unique_id = f"{vin}_switch_charge_to_full"
+        self._optimistic_state: bool | None = None
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return True if charging to full."""
+        if self._optimistic_state is not None:
+            return self._optimistic_state
+        if self.coordinator.data and self.coordinator.data.charging_schedule and self.coordinator.data.charging_schedule.charge:
+            return self.coordinator.data.charging_schedule.charge.charge_until_full
+        return None
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._optimistic_state = None
+        super()._handle_coordinator_update()
+
+    async def async_turn_on(self, **_kwargs: Any) -> None:
+        """Turn on charge to full."""
+        self._optimistic_state = True
+        self.async_write_ha_state()
+        await self.coordinator.async_request_schedule_update("charge_to_full", True)
+
+    async def async_turn_off(self, **_kwargs: Any) -> None:
+        """Turn off charge to full."""
+        self._optimistic_state = False
+        self.async_write_ha_state()
+        await self.coordinator.async_request_schedule_update("charge_to_full", False)
+
+
+class BydRepeatDailySwitch(BydVehicleEntity, SwitchEntity):
+    """Switch to toggle daily repeat (True for 'e', False for 's')."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "repeat_daily"
+    _attr_icon = "mdi:repeat"
+
+    def __init__(
+        self,
+        coordinator: BydDataUpdateCoordinator,
+        vin: str,
+        vehicle: Vehicle,
+    ) -> None:
+        super().__init__(coordinator)
+        self._vin = vin
+        self._vehicle = vehicle
+        self._attr_unique_id = f"{vin}_switch_repeat_daily"
+        self._optimistic_state: bool | None = None
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return True if repeat is daily."""
+        if self._optimistic_state is not None:
+            return self._optimistic_state
+        if self.coordinator.data and self.coordinator.data.charging_schedule and self.coordinator.data.charging_schedule.charge:
+            return self.coordinator.data.charging_schedule.charge.charge_way == "e"
+        return None
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._optimistic_state = None
+        super()._handle_coordinator_update()
+
+    async def async_turn_on(self, **_kwargs: Any) -> None:
+        """Turn on repeat daily."""
+        self._optimistic_state = True
+        self.async_write_ha_state()
+        await self.coordinator.async_request_schedule_update("pattern", "e")
+
+    async def async_turn_off(self, **_kwargs: Any) -> None:
+        """Turn off repeat daily."""
+        self._optimistic_state = False
+        self.async_write_ha_state()
+        await self.coordinator.async_request_schedule_update("pattern", "s")

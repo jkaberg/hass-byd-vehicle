@@ -457,6 +457,9 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
         self._car: BydCar | None = None
         self._realtime_endpoint_unsupported: bool = False
         self._cancel_hvac_final_retry: CALLBACK_TYPE | None = None
+        self.update_pending: bool = False
+        self._debounce_timer: CALLBACK_TYPE | None = None
+        self._pending_schedule_updates: dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     # State-engine push
@@ -633,6 +636,12 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
         self._force_next_refresh = False
         previous_snapshot = self.data
 
+        if self.update_pending:
+            _LOGGER.debug("Skipping telemetry refresh due to pending schedule update: vin=%s", self._vin[-6:])
+            if self.data is not None:
+                return self.data
+            return VehicleSnapshot(vehicle=self._vehicle)
+
         if not self._polling_enabled and not force:
             if self.data is not None:
                 return self.data
@@ -679,6 +688,18 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
             _LOGGER.debug(
                 "HVAC fetch skipped: vin=%s, reason=vehicle_not_on",
                 self._vin[-6:],
+            )
+
+        # --- Charging (Schedule & Live) ---
+        try:
+            await car.update_charging()
+        except _AUTH_ERRORS:
+            raise
+        except _RECOVERABLE_ERRORS as exc:
+            _LOGGER.warning(
+                "Charging fetch failed: vin=%s, error=%s",
+                self._vin,
+                exc,
             )
 
         snapshot = car.state
@@ -828,6 +849,88 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
                 self._vin,
                 exc,
             )
+
+    async def async_request_schedule_update(self, property_name: str, new_value: Any) -> None:
+        """Queue a debounced update for the charging schedule."""
+        self._pending_schedule_updates[property_name] = new_value
+
+        if self._debounce_timer is not None:
+            self._debounce_timer()
+            self._debounce_timer = None
+
+        self.update_pending = True
+
+        @callback
+        def _execute_update(_now: Any) -> None:
+            self._debounce_timer = None
+            self.hass.async_create_task(self._async_execute_schedule_update())
+
+        self._debounce_timer = async_call_later(
+            self.hass,
+            10.0,
+            _execute_update,
+        )
+
+    async def _async_execute_schedule_update(self) -> None:
+        """Execute the pending schedule update."""
+        if not self._pending_schedule_updates:
+            self.update_pending = False
+            return
+
+        current_enabled = True
+        current_charge_to_full = True
+        current_start_time = "22:00"
+        current_end_time = "full"
+        current_charge_way = "e"
+
+        if self.data and self.data.charging_schedule and self.data.charging_schedule.charge:
+            charge = self.data.charging_schedule.charge
+            if charge.status is not None:
+                current_enabled = charge.status
+            if charge.charge_until_full is not None:
+                current_charge_to_full = charge.charge_until_full
+            
+            if charge.start_time is not None:
+                current_start_time = charge.start_time.strftime("%H:%M")
+            if charge.end_time is not None:
+                current_end_time = charge.end_time.strftime("%H:%M")
+                
+            if charge.charge_way is not None:
+                current_charge_way = charge.charge_way
+
+        updates = self._pending_schedule_updates
+        
+        enabled = updates.get("enabled", current_enabled)
+        charge_to_full = updates.get("charge_to_full", current_charge_to_full)
+        pattern = updates.get("pattern", current_charge_way)
+        start_time_obj = updates.get("start_time")
+        end_time_obj = updates.get("end_time")
+
+        start_charge_time = start_time_obj.strftime("%H:%M") if start_time_obj else current_start_time
+        
+        if charge_to_full:
+            end_charge_time = "full"
+        else:
+            end_charge_time = end_time_obj.strftime("%H:%M") if end_time_obj else current_end_time
+            if end_charge_time == "full":
+                end_charge_time = "06:00"
+
+        charge_way = pattern
+
+        self._pending_schedule_updates.clear()
+
+        try:
+            await self.async_save_charging_schedule(
+                start_charge_time=start_charge_time,
+                end_charge_time=end_charge_time,
+                charge_way=charge_way,
+                enabled=enabled,
+            )
+        except Exception as exc:
+            _LOGGER.error("Debounced schedule save failed: %s", exc)
+        finally:
+            self.update_pending = False
+            await self.async_request_refresh()
 
     async def async_save_charging_schedule(
         self,

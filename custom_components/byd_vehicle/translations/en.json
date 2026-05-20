@@ -576,6 +576,23 @@
       },
       "disable_polling": {
         "name": "Disable polling"
+      },
+      "schedule_enabled": {
+        "name": "Schedule enabled"
+      },
+      "charge_to_full": {
+        "name": "Charge to full"
+      },
+      "repeat_daily": {
+        "name": "Repeat daily"
+      }
+    },
+    "time": {
+      "start_time": {
+        "name": "Start time"
+      },
+      "end_time": {
+        "name": "End time"
       }
     },
     "climate": {
