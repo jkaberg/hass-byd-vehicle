@@ -81,6 +81,51 @@ def _sentinel_int_on(attr_name: str) -> Callable[[Any], bool | None]:
     return _fn
 
 
+_TIRE_STATUS_CORNERS: tuple[str, ...] = (
+    "left_front_tire_status",
+    "right_front_tire_status",
+    "left_rear_tire_status",
+    "right_rear_tire_status",
+)
+
+
+def _tire_status_with_sentinel_guard(attr_name: str) -> Callable[[Any], bool | None]:
+    """Value fn for individual ``*_tire_status`` sensors with sentinel guard.
+
+    Some VINs (notably the Sealion 7 EU trim) report every per-wheel
+    status field as ``0`` permanently, even when the integration is
+    talking to the cloud normally and the tire pressure fields carry
+    real bar/kPa readings.  Without a guard the four binary sensors
+    sit at ``off`` (``no problem``) for the lifetime of the car —
+    which is indistinguishable from the legitimate ``no fault`` reading
+    a vehicle with a working TPMS array would publish, so a future real
+    fault could be masked.
+
+    The cross-field signature of the sentinel-mode payload is *all four
+    corners reading 0 simultaneously and the ``tirepressure_system``
+    flag also reading 0*.  When that matches, return ``None`` so the
+    sensor reads ``unavailable``.  Any single non-zero corner is treated
+    as a real fault and passes through normally.
+    """
+
+    def _fn(obj: Any) -> bool | None:
+        val = getattr(obj, attr_name, None)
+        if val is None:
+            return None
+        # Real fault on this corner — surface it regardless of others.
+        if val > 0:
+            return True
+        all_corners_zero = all(
+            (getattr(obj, corner, None) or 0) == 0 for corner in _TIRE_STATUS_CORNERS
+        )
+        system_zero = (getattr(obj, "tirepressure_system", None) or 0) == 0
+        if all_corners_zero and system_zero:
+            return None
+        return False
+
+    return _fn
+
+
 BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     # =================================
     # Aggregate states (enabled)
@@ -333,7 +378,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         icon="mdi:car-tire-alert",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_sentinel_int_on("left_front_tire_status"),
+        value_fn=_tire_status_with_sentinel_guard("left_front_tire_status"),
     ),
     BydBinarySensorDescription(
         key="right_front_tire_status",
@@ -342,7 +387,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         icon="mdi:car-tire-alert",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_sentinel_int_on("right_front_tire_status"),
+        value_fn=_tire_status_with_sentinel_guard("right_front_tire_status"),
     ),
     BydBinarySensorDescription(
         key="left_rear_tire_status",
@@ -351,7 +396,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         icon="mdi:car-tire-alert",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_sentinel_int_on("left_rear_tire_status"),
+        value_fn=_tire_status_with_sentinel_guard("left_rear_tire_status"),
     ),
     BydBinarySensorDescription(
         key="right_rear_tire_status",
@@ -360,7 +405,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         icon="mdi:car-tire-alert",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_sentinel_int_on("right_rear_tire_status"),
+        value_fn=_tire_status_with_sentinel_guard("right_rear_tire_status"),
     ),
     BydBinarySensorDescription(
         key="upgrade_status",
