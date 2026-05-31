@@ -54,6 +54,9 @@ Configuration is UI-only via Home Assistant config flow.
 
 Entity updates are cloud-polled, poll intervals are exposed as entities and can be tuned using automations.
 
+> [!TIP]
+> Frequent polling can cause noticeable battery drain. Adjust the polling interval to find your ideal balance between real-time updates and battery drain.
+
 ## Documentation
 
 - Troubleshooting: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
