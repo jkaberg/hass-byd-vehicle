@@ -96,7 +96,7 @@ class BydVehicleEntity(CoordinatorEntity[BydDataUpdateCoordinator]):
         Supported values: ``"realtime"``, ``"hvac"``, ``"gps"``,
         ``"energy"``, ``"energy_cumulative"``, ``"energy_nearest"``,
         ``"energy_self_graph"``, ``"energy_auto_model_graph"``,
-        ``"charging_schedule"``, ``"charging_schedule_charge"``,
+        ``"charging"``, ``"charging_schedule"``, ``"charging_schedule_charge"``,
         ``"charging_schedule_journey"``, ``"snapshot"`` (the full
         :class:`VehicleSnapshot` for cross-section merged value_fn lookups).
         """
@@ -108,6 +108,9 @@ class BydVehicleEntity(CoordinatorEntity[BydDataUpdateCoordinator]):
             return self._get_gps()
         if source == "energy":
             return self._get_energy()
+        if source == "charging":
+            snap = self._snapshot()
+            return snap.charging if snap is not None else None
         if source == "snapshot":
             return self._snapshot()
         if source.startswith("energy_"):
