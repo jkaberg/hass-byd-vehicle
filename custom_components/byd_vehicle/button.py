@@ -49,6 +49,12 @@ BUTTON_DESCRIPTIONS: tuple[BydButtonDescription, ...] = (
         capability_key="close_windows",
         car_command=lambda car: car.windows.close(),
     ),
+    BydButtonDescription(
+        key="open_windows",
+        icon="mdi:window-open",
+        capability_key="open_windows",
+        car_command=lambda car: car.windows.open(),
+    ),
 )
 
 

@@ -489,6 +489,9 @@
       "close_windows": {
         "name": "Close windows"
       },
+      "open_windows": {
+        "name": "Open windows"
+      },
       "force_poll": {
         "name": "Force poll"
       },
