@@ -12,9 +12,10 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory
+from homeassistant.const import STATE_ON, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 from pybyd.models.realtime import (
     DoorOpenState,
     WindowState,
@@ -468,8 +469,15 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class BydBinarySensor(BydVehicleEntity, BinarySensorEntity):
-    """Representation of a BYD vehicle binary sensor."""
+class BydBinarySensor(BydVehicleEntity, BinarySensorEntity, RestoreEntity):
+    """Representation of a BYD vehicle binary sensor.
+
+    Survives restarts and config-entry reloads via ``RestoreEntity`` —
+    the cached ``_last_is_on`` value is seeded from HA's restore state
+    on ``async_added_to_hass()`` so a partial post-reload payload that
+    drops a field (typical of deep-sleep responses) doesn't flip a known
+    value to ``unknown``.
+    """
 
     _attr_has_entity_name = True
     entity_description: BydBinarySensorDescription
@@ -490,10 +498,16 @@ class BydBinarySensor(BydVehicleEntity, BinarySensorEntity):
         self._attr_unique_id = f"{vin}_{description.source}_{description.key}"
         self._last_is_on: bool | None = None
 
-        # Auto-disable binary sensors that return no data on first fetch.
-        if description.entity_registry_enabled_default is not False:
-            if self._resolve_value() is None:
-                self._attr_entity_registry_enabled_default = False
+    async def async_added_to_hass(self) -> None:
+        """Restore last known is_on value before the coordinator binds."""
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is None:
+            return
+        if last.state == STATE_ON:
+            self._last_is_on = True
+        elif last.state == "off":
+            self._last_is_on = False
 
     # ------------------------------------------------------------------
     # Helpers
@@ -528,17 +542,19 @@ class BydBinarySensor(BydVehicleEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return the binary sensor state.
 
-        Returns ``None`` (unknown) when the value is not available in the
-        current data fetch.  Falls back to the last known value only when
-        the coordinator itself has no data (entity is borderline unavailable).
+        Resolution order:
+        1. Fresh value from the current data fetch — use it (and cache it).
+        2. No value but we have a restored / cached previous one — use that.
+           Covers deep-sleep payloads where individual flags drop out
+           transiently even though the wider snapshot is present.
+        3. Genuinely no signal → ``None``.
         """
         value = self._resolve_value()
         if value is not None:
             return value
-        # Source object missing → coordinator has no data yet; use cache.
-        if self._get_source_obj(self.entity_description.source) is None:
+        # Field missing this fetch — fall back to last known value if we have one.
+        if self._last_is_on is not None:
             return self._last_is_on
-        # Source exists but value is None → genuinely unknown.
         return None
 
     def _handle_coordinator_update(self) -> None:

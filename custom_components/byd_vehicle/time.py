@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+from typing import Any
 
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
@@ -57,9 +58,12 @@ class BydStartTimeEntity(BydVehicleEntity, TimeEntity):
         """Return the start time."""
         if self._optimistic_state is not None:
             return self._optimistic_state
-        data = self.coordinator.data
-        if data and data.charging_schedule and data.charging_schedule.charge:
-            return data.charging_schedule.charge.start_time
+        if (
+            self.coordinator.data
+            and self.coordinator.data.charging_schedule
+            and self.coordinator.data.charging_schedule.charge
+        ):
+            return self.coordinator.data.charging_schedule.charge.start_time
         return None
 
     @callback
@@ -94,13 +98,28 @@ class BydEndTimeEntity(BydVehicleEntity, TimeEntity):
         self._optimistic_state: datetime.time | None = None
 
     @property
+    def available(self) -> bool:
+        """Hide end_time when the schedule is set to charge until full."""
+        if not super().available:
+            return False
+        charge = self._charge()
+        if charge is None:
+            return False
+        return not bool(getattr(charge, "charge_until_full", False))
+
+    @property
     def native_value(self) -> datetime.time | None:
         """Return the end time."""
         if self._optimistic_state is not None:
             return self._optimistic_state
-        data = self.coordinator.data
-        if data and data.charging_schedule and data.charging_schedule.charge:
-            return data.charging_schedule.charge.end_time
+        charge = self._charge()
+        if charge is None:
+            return None
+        return charge.end_time
+
+    def _charge(self) -> Any:
+        if self.coordinator.data and self.coordinator.data.charging_schedule:
+            return self.coordinator.data.charging_schedule.charge
         return None
 
     @callback
