@@ -7,6 +7,7 @@ from typing import Any
 
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from pybyd import (
     BydControlPasswordError,
@@ -157,6 +158,13 @@ class BydVehicleEntity(CoordinatorEntity[BydDataUpdateCoordinator]):
             )
         return "Control PIN is not configured; set Control PIN to enable actions"
 
+    #: Seconds to wait after a successful action before forcing a poll.
+    #: Long enough for the BYD cloud + T-Box to reflect the new physical
+    #: state (windows in vent position, lock state, climate on, etc.) in
+    #: the next realtime payload, short enough that the user sees the UI
+    #: update without manually refreshing.
+    _POST_ACTION_REFRESH_DELAY = 15
+
     async def _execute_car_command(
         self,
         coro: Any,
@@ -165,22 +173,38 @@ class BydVehicleEntity(CoordinatorEntity[BydDataUpdateCoordinator]):
     ) -> None:
         """Execute a BydCar capability command with HA error handling.
 
-        On :class:`BydRemoteControlError` the command is treated as
-        optimistically successful (pyBYD's state engine handles the
-        projection).  On any other failure the exception is re-raised
-        as :class:`HomeAssistantError`.
+        On :class:`BydRemoteControlError` (rejection / timeout / asleep car)
+        the failure is surfaced as :class:`HomeAssistantError` — pyBYD has
+        already rolled back the optimistic projection, so no fake state is
+        shown.  Other failures are likewise re-raised as
+        :class:`HomeAssistantError`.
+
+        After a genuine success schedules a force-poll
+        :attr:`_POST_ACTION_REFRESH_DELAY` seconds later so the UI catches
+        up to the real vehicle state without the user pressing Force poll.
         """
         if not self.coordinator.has_operation_pin:
             raise HomeAssistantError(self._command_pin_error_message())
+        schedule_refresh = False
         try:
             await coro
+            schedule_refresh = True
         except BydRemoteControlError as exc:
+            code = getattr(exc, "code", None)
+            if code in ("timeout", "no_serial"):
+                msg = (
+                    f"{command}: the car didn't confirm the command "
+                    "(it may be asleep or offline) — try again"
+                )
+            else:
+                msg = f"{command}: the car rejected the command ({exc})"
             _LOGGER.warning(
-                "%s command sent but cloud reported failure — "
-                "pyBYD state engine handles projection: %s",
-                command,
-                exc,
+                "%s command not confirmed: %s (code=%s)", command, exc, code
             )
+            # pyBYD already rolled back the optimistic projection, so the
+            # reported state stays honest; surface the failure to the user
+            # instead of pretending it worked.
+            raise HomeAssistantError(msg) from exc
         except BydControlPasswordError as exc:
             if exc.code == "5006":
                 msg = "Cloud control temporarily locked by BYD — try again later"
@@ -198,6 +222,29 @@ class BydVehicleEntity(CoordinatorEntity[BydDataUpdateCoordinator]):
             raise HomeAssistantError(msg) from exc
         except Exception as exc:  # noqa: BLE001
             raise HomeAssistantError(str(exc)) from exc
+        if schedule_refresh:
+            self._schedule_post_action_refresh(command)
+
+    def _schedule_post_action_refresh(self, command: str) -> None:
+        """Schedule a one-shot force-poll after a successful command.
+
+        Run as a fire-and-forget timer; a failure to refresh logs at
+        debug and does not propagate — the next regular poll will catch
+        up anyway.
+        """
+
+        async def _refresh(_now: Any) -> None:
+            try:
+                await self.coordinator.async_force_refresh()
+                _LOGGER.debug("Post-action refresh fired for command=%s", command)
+            except Exception:  # noqa: BLE001
+                _LOGGER.debug(
+                    "Post-action refresh failed for command=%s",
+                    command,
+                    exc_info=True,
+                )
+
+        async_call_later(self.hass, self._POST_ACTION_REFRESH_DELAY, _refresh)
 
 
 class BydActionEntity(BydVehicleEntity):
