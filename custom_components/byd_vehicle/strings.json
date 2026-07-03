@@ -498,6 +498,9 @@
       "start_charging": {
         "name": "Start charging"
       },
+      "stop_charging": {
+        "name": "Stop charging"
+      },
       "fetch_energy": {
         "name": "Fetch energy data"
       }
