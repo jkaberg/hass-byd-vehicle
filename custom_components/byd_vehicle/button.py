@@ -75,6 +75,7 @@ async def async_setup_entry(
 
         entities.append(BydForcePollButton(coordinator, gps_coordinator, vin, vehicle))
         entities.append(BydStartChargingButton(coordinator, vin, vehicle))
+        entities.append(BydStopChargingButton(coordinator, vin, vehicle))
         entities.append(BydFetchEnergyButton(coordinator, vin, vehicle))
         for description in BUTTON_DESCRIPTIONS:
             if not coordinator.capability_available(description.capability_key):
@@ -209,6 +210,49 @@ class BydStartChargingButton(BydVehicleEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self.coordinator.async_start_charging()
+
+
+class BydStopChargingButton(BydVehicleEntity, ButtonEntity):
+    """Button that stops charging immediately."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "stop_charging"
+    _attr_icon = "mdi:stop"
+
+    def __init__(
+        self,
+        coordinator: BydDataUpdateCoordinator,
+        vin: str,
+        vehicle: Vehicle,
+    ) -> None:
+        super().__init__(coordinator)
+        self._vin = vin
+        self._vehicle = vehicle
+        self._attr_unique_id = f"{vin}_button_stop_charging"
+
+    @property
+    def available(self) -> bool:
+        """Only show while the car is actually charging.
+
+        Mirrors the start button's plug/SoC gating: a stop command only
+        makes sense mid-charge, so hide it otherwise (the cloud rejects a
+        stop on an idle car anyway). Prefer realtime fields, fall back to
+        the charging snapshot.
+        """
+        if not super().available:
+            return False
+        snapshot = self._snapshot()
+        if snapshot is None:
+            return False
+        is_charging: bool | None = None
+        if snapshot.realtime is not None:
+            is_charging = snapshot.realtime.is_charging
+        if is_charging is None and snapshot.charging is not None:
+            is_charging = snapshot.charging.is_charging
+        return bool(is_charging)
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_stop_charging()
 
 
 class BydFetchEnergyButton(BydVehicleEntity, ButtonEntity):

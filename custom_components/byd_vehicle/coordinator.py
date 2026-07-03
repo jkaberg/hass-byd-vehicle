@@ -1079,6 +1079,46 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
                 exc_info=True,
             )
 
+    async def async_stop_charging(self) -> None:
+        """Stop charging immediately and refresh charging state on success.
+
+        Symmetric to :meth:`async_start_charging`. Raises
+        :class:`HomeAssistantError` on failure (auth, transport, unsupported
+        endpoint, polling timeout) so callers see a loud failure rather than
+        a silent no-op.
+        """
+        if self._car is None:
+            raise HomeAssistantError(
+                f"BYD vehicle {self._vin[-6:]} not ready for charging commands"
+            )
+        try:
+            result = await self._car.stop_charging()
+        except BydEndpointNotSupportedError as exc:
+            raise HomeAssistantError(
+                "stop_charging not supported for this vehicle/region"
+            ) from exc
+        except BydRemoteControlError as exc:
+            raise HomeAssistantError(f"stop_charging failed to settle: {exc}") from exc
+        except BydAuthenticationError as exc:
+            raise HomeAssistantError(f"stop_charging failed (auth): {exc}") from exc
+        except (BydApiError, BydTransportError) as exc:
+            raise HomeAssistantError(f"stop_charging failed: {exc}") from exc
+
+        _LOGGER.info(
+            "stop_charging settled: vin=%s, message=%s",
+            self._vin[-6:],
+            result.message,
+        )
+
+        try:
+            await self._car.update_charging()
+            await self.async_request_refresh()
+        except Exception:  # noqa: BLE001
+            _LOGGER.debug(
+                "Post-stop_charging refresh failed (non-fatal)",
+                exc_info=True,
+            )
+
 
 class BydGpsUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
     """Coordinator for GPS updates for a single VIN.
