@@ -492,6 +492,15 @@
       "open_windows": {
         "name": "Open windows"
       },
+      "open_trunk": {
+        "name": "Open trunk"
+      },
+      "close_trunk": {
+        "name": "Close trunk"
+      },
+      "shutdown_vehicle": {
+        "name": "Shut down vehicle"
+      },
       "force_poll": {
         "name": "Force poll"
       },
