@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import types
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -12,12 +13,45 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from pybyd._api import control as _control_api
 from pybyd.car import BydCar
 from pybyd.models.vehicle import Vehicle
 
 from .const import DOMAIN
 from .coordinator import BydDataUpdateCoordinator
 from .entity import BydActionEntity, BydVehicleEntity
+
+# pyBYD 0.0.73 already detects vehicle support for BYD's "one-click shutdown"
+# (一键熄火) via the one_click_shutdown capability flag (functionNo 1031,
+# see pybyd/models/latest_config.py) but has no RemoteCommand member or
+# public BydCar method for it yet -- see hass-byd-vehicle issue #161.
+# commandType=TURNOFFENGINE was found by live probing and verified twice
+# (BYD's API responded "Powered off successfully" with controlState=SUCCESS,
+# and the vehicle physically powered off both times). This sends it through
+# pyBYD's internal remote-control transport directly -- the same function
+# every public BydCar command (lock, open_trunk, ...) ultimately calls --
+# until pyBYD ships official support. Replace with a real BydCar method
+# once it exists upstream.
+_SHUTDOWN_COMMAND_TYPE = "TURNOFFENGINE"
+
+
+async def _send_shutdown_vehicle_command(car: BydCar) -> Any:
+    """Send BYD's undocumented one-click shutdown command for *car*."""
+    client = car._client  # noqa: SLF001 -- no public pyBYD API for this yet
+    command_pwd = client._require_command_pwd(None)  # noqa: SLF001
+    session = await client.ensure_session()
+    transport = client._transport  # noqa: SLF001
+    fake_command = types.SimpleNamespace(
+        value=_SHUTDOWN_COMMAND_TYPE, name=_SHUTDOWN_COMMAND_TYPE
+    )
+    return await _control_api.poll_remote_control(
+        client._config,  # noqa: SLF001
+        session,
+        transport,
+        car.vin,
+        fake_command,
+        command_pwd=command_pwd,
+    )
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -54,6 +88,24 @@ BUTTON_DESCRIPTIONS: tuple[BydButtonDescription, ...] = (
         icon="mdi:window-open",
         capability_key="open_windows",
         car_command=lambda car: car.windows.open(),
+    ),
+    BydButtonDescription(
+        key="open_trunk",
+        icon="mdi:car-back",
+        capability_key="open_trunk",
+        car_command=lambda car: car.trunk.open(),
+    ),
+    BydButtonDescription(
+        key="close_trunk",
+        icon="mdi:car-back",
+        capability_key="close_trunk",
+        car_command=lambda car: car.trunk.close(),
+    ),
+    BydButtonDescription(
+        key="shutdown_vehicle",
+        icon="mdi:power",
+        capability_key="one_click_shutdown",
+        car_command=lambda car: _send_shutdown_vehicle_command(car),
     ),
 )
 
