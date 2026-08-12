@@ -47,9 +47,9 @@ async def _send_shutdown_vehicle_command(car: BydCar) -> Any:
     return await _control_api.poll_remote_control(
         client._config,  # noqa: SLF001
         session,
-        transport,
+        transport,  # type: ignore[arg-type]
         car.vin,
-        fake_command,
+        fake_command,  # type: ignore[arg-type]
         command_pwd=command_pwd,
     )
 
