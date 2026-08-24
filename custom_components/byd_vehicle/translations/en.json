@@ -488,6 +488,12 @@
       "close_windows": {
         "name": "Close windows"
       },
+      "open_trunk": {
+        "name": "Open trunk"
+      },
+      "close_trunk": {
+        "name": "Close trunk"
+      },
       "force_poll": {
         "name": "Force poll"
       },

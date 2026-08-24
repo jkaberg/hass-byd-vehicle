@@ -55,6 +55,18 @@ BUTTON_DESCRIPTIONS: tuple[BydButtonDescription, ...] = (
         capability_key="open_windows",
         car_command=lambda car: car.windows.open(),
     ),
+    BydButtonDescription(
+        key="open_trunk",
+        icon="mdi:car-back",
+        capability_key="open_trunk",
+        car_command=lambda car: car.trunk.open(),
+    ),
+    BydButtonDescription(
+        key="close_trunk",
+        icon="mdi:car-back",
+        capability_key="close_trunk",
+        car_command=lambda car: car.trunk.close(),
+    ),
 )
 
 
