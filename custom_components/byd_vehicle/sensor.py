@@ -391,6 +391,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=_round_int_attr("temp_in_car"),
+        validator_fn=keep_previous_when_zero,
     ),
     # Tire pressures – unit resolved dynamically from tire_press_unit;
     # kPa is the default because most BYD vehicles report tirePressUnit=3.
@@ -446,6 +447,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=_round_int_attr("temp_out_car"),
+        validator_fn=keep_previous_when_zero,
     ),
     BydSensorDescription(
         key="pm",
