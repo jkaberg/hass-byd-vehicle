@@ -2,6 +2,23 @@
 
 from __future__ import annotations
 
+# _vendor/ override: if a sibling _vendor/ directory exists, prepend it to
+# sys.path and evict any already-imported pybyd modules so the next
+# ``import pybyd`` resolves to the vendored copy. No-op when absent, so
+# the manifest-pinned pybyd is used. See HA_LOCAL_OVERRIDE.md.
+import sys as _sys
+from pathlib import Path as _Path
+
+_vendor_path = _Path(__file__).parent / "_vendor"
+if _vendor_path.is_dir():
+    _vendor_str = str(_vendor_path)
+    if _vendor_str not in _sys.path:
+        _sys.path.insert(0, _vendor_str)
+    for _name in list(_sys.modules):
+        if _name == "pybyd" or _name.startswith("pybyd."):
+            del _sys.modules[_name]
+del _sys, _Path, _vendor_path
+
 import logging
 from typing import Any
 

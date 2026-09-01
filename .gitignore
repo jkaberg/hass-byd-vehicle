@@ -203,6 +203,9 @@ cython_debug/
 # Local Home Assistant docker dev runtime
 .ha-dev/
 
+# Vendored pyBYD override (local dev only — see HA_LOCAL_OVERRIDE.md)
+custom_components/byd_vehicle/_vendor/
+
 # PyPI configuration file
 .pypirc
 
