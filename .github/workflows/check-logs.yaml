@@ -17,7 +17,7 @@ jobs:
           script: |
             const issue = context.payload.issue;
             const body = issue.body || '';
-            const LABEL = 'needs-logs';
+            const LABEL = 'needs-info';
             const hasLabel = issue.labels.some(l => l.name === LABEL);
 
             // --- Extract log section from GitHub forms markdown ---
@@ -58,7 +58,7 @@ jobs:
             if (!isValid) {
               // Only act once — skip if already labelled and issue is closed
               if (issue.state === 'closed' && hasLabel) {
-                core.info('Issue already closed with needs-logs label, skipping.');
+                core.info(`Issue already closed with ${LABEL} label, skipping.`);
                 return;
               }
 
@@ -74,8 +74,8 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   name: LABEL,
-                  color: 'e11d48',
-                  description: 'Issue closed: debug logs required',
+                  color: 'fbca04',
+                  description: 'Waiting on the reporter for logs or details',
                 });
               }
 
