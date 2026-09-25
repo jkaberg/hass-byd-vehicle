@@ -5,7 +5,7 @@ from __future__ import annotations
 import types
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -47,9 +47,9 @@ async def _send_shutdown_vehicle_command(car: BydCar) -> Any:
     return await _control_api.poll_remote_control(
         client._config,  # noqa: SLF001
         session,
-        transport,  # type: ignore[arg-type]
+        cast(Any, transport),
         car.vin,
-        fake_command,  # type: ignore[arg-type]
+        cast(Any, fake_command),
         command_pwd=command_pwd,
     )
 
