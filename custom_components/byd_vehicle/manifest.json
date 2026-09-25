@@ -9,7 +9,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/jkaberg/hass-byd-vehicle/issues",
   "requirements": [
-    "pybyd==0.0.75"
+    "pybyd==0.0.76"
   ],
-  "version": "0.0.87"
+  "version": "0.0.88"
 }
