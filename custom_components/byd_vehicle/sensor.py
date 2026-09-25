@@ -18,6 +18,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
+    UnitOfEnergyDistance,
     UnitOfLength,
     UnitOfPower,
     UnitOfPressure,
@@ -402,6 +403,44 @@ _LIFETIME_FUEL_VALUE, _LIFETIME_FUEL_UNIT = _merged_consumption(
 )
 
 
+def _lifetime_leg(rt: Any, field: str, leg: str, unit: str) -> Any:
+    """Return one leg of a lifetime rate in *unit*, or ``None``.
+
+    Reads pyBYD's per-leg split of *field* and converts per-100-miles
+    figures (``totalEnergy`` follows the car's display units). A leg in any
+    other unit yields ``None`` rather than a mislabelled figure.
+    """
+    value, leg_unit = _to_per_100km(
+        getattr(rt, f"{field}_{leg}", None), getattr(rt, f"{field}_{leg}_unit", None)
+    )
+    return value if leg_unit == unit else None
+
+
+def _lifetime_ev_rate(field: str) -> Callable[[Any], Any]:
+    """Create a value_fn for the EV leg of a lifetime rate, in kWh/100km.
+
+    A payload without an EV leg (pure ICE, or a hybrid reporting fuel only)
+    reads ``None``; its figure is in the fuel attributes.
+    """
+    unit = UnitOfEnergyDistance.KILO_WATT_HOUR_PER_100_KM
+    return lambda rt: _lifetime_leg(rt, field, "ev", unit)
+
+
+def _lifetime_fuel_rate_attrs(field: str) -> Callable[[Any], dict[str, Any]]:
+    """Create a state_attrs_fn exposing the fuel leg of a lifetime rate.
+
+    The attributes are absent when the payload has no fuel leg (BEVs).
+    """
+
+    def _get(rt: Any) -> dict[str, Any]:
+        value = _lifetime_leg(rt, field, "fuel", "L/100km")
+        if value is None:
+            return {}
+        return {"fuel_consumption": value, "fuel_consumption_unit": "L/100km"}
+
+    return _get
+
+
 SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     # =============================================
     # Realtime: primary sensors (enabled by default)
@@ -654,6 +693,8 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         icon="mdi:battery-clock",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    # Unmapped: ``totalPower`` is ``0.0`` in every payload captured so far,
+    # on every vehicle and region (issue #175).
     BydSensorDescription(
         key="total_power",
         source="realtime",
@@ -698,6 +739,8 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         icon="mdi:gas-station",
         entity_registry_enabled_default=True,
     ),
+    # Unmapped despite the name: ``totalOil`` is ``0.0`` in every payload
+    # captured so far, hybrids included (issue #175).
     BydSensorDescription(
         key="total_oil",
         source="realtime",
@@ -757,15 +800,17 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     ),
     # ==========================================
     # Realtime: additional diagnostic sensors
-    #   (disabled by default — raw / unparsed)
+    #   (disabled by default)
     # ==========================================
     BydSensorDescription(
         key="total_energy",
         source="realtime",
         icon="mdi:flash",
+        native_unit_of_measurement=UnitOfEnergyDistance.KILO_WATT_HOUR_PER_100_KM,
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_parse_numeric_string("total_energy"),
+        value_fn=_lifetime_ev_rate("total_energy"),
+        state_attrs_fn=_lifetime_fuel_rate_attrs("total_energy"),
     ),
     BydSensorDescription(
         key="nearest_energy_consumption_unit",
@@ -797,7 +842,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    # Energy consumption strings
+    # Energy consumption rates
     BydSensorDescription(
         key="energy_consumption",
         source="realtime",
@@ -811,19 +856,23 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
         key="total_consumption",
         source="realtime",
         icon="mdi:lightning-bolt",
+        native_unit_of_measurement=UnitOfEnergyDistance.KILO_WATT_HOUR_PER_100_KM,
         state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_parse_numeric_string("total_consumption"),
+        value_fn=_lifetime_ev_rate("total_consumption"),
+        state_attrs_fn=_lifetime_fuel_rate_attrs("total_consumption"),
     ),
     BydSensorDescription(
         key="total_consumption_en",
         source="realtime",
         icon="mdi:lightning-bolt",
+        native_unit_of_measurement=UnitOfEnergyDistance.KILO_WATT_HOUR_PER_100_KM,
         state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_parse_numeric_string("total_consumption_en"),
+        value_fn=_lifetime_ev_rate("total_consumption_en"),
+        state_attrs_fn=_lifetime_fuel_rate_attrs("total_consumption_en"),
     ),
     # Warning indicators (as numeric sensors)
     BydSensorDescription(
