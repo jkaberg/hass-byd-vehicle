@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from homeassistant.components import persistent_notification
@@ -19,8 +20,10 @@ from .const import (
     CONF_COUNTRY_CODE,
     CONF_DEVICE_PROFILE,
     CONF_GPS_POLL_INTERVAL,
+    CONF_GPS_POLL_INTERVAL_BY_VIN,
     CONF_LANGUAGE,
     CONF_POLL_INTERVAL,
+    CONF_POLL_INTERVAL_BY_VIN,
     DEFAULT_COUNTRY,
     DEFAULT_GPS_POLL_INTERVAL,
     DEFAULT_POLL_INTERVAL,
@@ -128,28 +131,49 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-def _apply_poll_intervals_from_options(
-    entry: ConfigEntry,
-    entry_data: dict[str, Any],
-) -> None:
-    """Apply poll intervals from entry options to all coordinators."""
+def _resolve_poll_intervals(options: Mapping[str, Any], vin: str) -> tuple[int, int]:
+    """Return (telemetry, gps) poll intervals for one vehicle.
+
+    A per-VIN override wins over the entry-level value, which in turn falls
+    back to the defaults.
+    """
+
+    def _pick(by_vin_key: str, key: str, default: int) -> Any:
+        by_vin = options.get(by_vin_key)
+        if isinstance(by_vin, Mapping) and vin in by_vin:
+            return by_vin[vin]
+        return options.get(key, default)
+
     poll_interval = _sanitize_interval(
-        entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
+        _pick(CONF_POLL_INTERVAL_BY_VIN, CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
         DEFAULT_POLL_INTERVAL,
         MIN_POLL_INTERVAL,
         MAX_POLL_INTERVAL,
     )
     gps_interval = _sanitize_interval(
-        entry.options.get(CONF_GPS_POLL_INTERVAL, DEFAULT_GPS_POLL_INTERVAL),
+        _pick(
+            CONF_GPS_POLL_INTERVAL_BY_VIN,
+            CONF_GPS_POLL_INTERVAL,
+            DEFAULT_GPS_POLL_INTERVAL,
+        ),
         DEFAULT_GPS_POLL_INTERVAL,
         MIN_GPS_POLL_INTERVAL,
         MAX_GPS_POLL_INTERVAL,
     )
+    return poll_interval, gps_interval
 
-    for coordinator in entry_data.get("coordinators", {}).values():
-        coordinator.set_poll_interval(poll_interval)
-    for gps_coordinator in entry_data.get("gps_coordinators", {}).values():
-        gps_coordinator.set_poll_interval(gps_interval)
+
+def _apply_poll_intervals_from_options(
+    entry: ConfigEntry,
+    entry_data: dict[str, Any],
+) -> None:
+    """Apply poll intervals from entry options to each vehicle's coordinators."""
+    for vin, coordinator in entry_data.get("coordinators", {}).items():
+        coordinator.set_poll_interval(_resolve_poll_intervals(entry.options, vin)[0])
+    for vin, gps_coordinator in entry_data.get("gps_coordinators", {}).items():
+        gps_coordinator.set_poll_interval(
+            _resolve_poll_intervals(entry.options, vin)[1]
+        )
 
 
 async def _async_handle_entry_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -167,7 +191,12 @@ async def _async_handle_entry_update(hass: HomeAssistant, entry: ConfigEntry) ->
         for key in set(previous_options) | set(current_options)
         if previous_options.get(key) != current_options.get(key)
     }
-    poll_keys = {CONF_POLL_INTERVAL, CONF_GPS_POLL_INTERVAL}
+    poll_keys = {
+        CONF_POLL_INTERVAL,
+        CONF_GPS_POLL_INTERVAL,
+        CONF_POLL_INTERVAL_BY_VIN,
+        CONF_GPS_POLL_INTERVAL_BY_VIN,
+    }
 
     if changed_keys and changed_keys.issubset(poll_keys):
         _apply_poll_intervals_from_options(entry, entry_data)
@@ -197,19 +226,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     session = async_get_clientsession(hass)
     api = BydApi(hass, entry, session)
-
-    poll_interval = _sanitize_interval(
-        entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
-        DEFAULT_POLL_INTERVAL,
-        MIN_POLL_INTERVAL,
-        MAX_POLL_INTERVAL,
-    )
-    gps_interval = _sanitize_interval(
-        entry.options.get(CONF_GPS_POLL_INTERVAL, DEFAULT_GPS_POLL_INTERVAL),
-        DEFAULT_GPS_POLL_INTERVAL,
-        MIN_GPS_POLL_INTERVAL,
-        MAX_GPS_POLL_INTERVAL,
-    )
 
     async def _fetch_vehicles(client: BydClient) -> list:
         return await client.get_vehicles()
@@ -245,6 +261,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     for vehicle in vehicles:
         vin = vehicle.vin
+        poll_interval, gps_interval = _resolve_poll_intervals(entry.options, vin)
         telemetry_coordinator = BydDataUpdateCoordinator(
             hass,
             api,
