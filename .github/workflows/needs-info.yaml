@@ -1,0 +1,88 @@
+name: Close stale needs-info issues
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  # reporter answered, so we're no longer waiting on them
+  clear-label:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      !github.event.issue.pull_request &&
+      github.event.issue.state == 'open' &&
+      github.event.comment.user.login == github.event.issue.user.login &&
+      contains(github.event.issue.labels.*.name, 'needs-info')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove needs-info label
+        uses: actions/github-script@v9
+        with:
+          script: |
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              name: 'needs-info',
+            });
+            core.info(`Issue #${context.payload.issue.number}: reporter replied, removed needs-info.`);
+
+  close-stale:
+    if: github.event_name != 'issue_comment'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close issues with no reply in 30 days
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const LABEL = 'needs-info';
+            const DAYS = 30;
+            const cutoff = Date.now() - DAYS * 24 * 60 * 60 * 1000;
+            const { owner, repo } = context.repo;
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', labels: LABEL, per_page: 100,
+            });
+
+            for (const issue of issues) {
+              if (issue.pull_request) continue;
+
+              const events = await github.paginate(github.rest.issues.listEvents, {
+                owner, repo, issue_number: issue.number, per_page: 100,
+              });
+              const labeled = events
+                .filter(e => e.event === 'labeled' && e.label?.name === LABEL)
+                .pop();
+              if (!labeled) continue;
+              const labeledAt = new Date(labeled.created_at).getTime();
+
+              // covers replies made before the clear-label job existed
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: issue.number, since: labeled.created_at, per_page: 100,
+              });
+              const replied = comments.some(c =>
+                c.user?.login === issue.user?.login && new Date(c.created_at).getTime() > labeledAt);
+              if (replied) {
+                core.info(`#${issue.number}: reporter replied, removing ${LABEL}.`);
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: issue.number, name: LABEL });
+                continue;
+              }
+
+              if (labeledAt > cutoff) continue;
+
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issue.number,
+                body: `Closing, no reply in ${DAYS} days. Add the requested details and it can be reopened.`,
+              });
+              await github.rest.issues.update({
+                owner, repo, issue_number: issue.number,
+                state: 'closed', state_reason: 'not_planned',
+              });
+              core.info(`#${issue.number}: closed, ${LABEL} since ${labeled.created_at}.`);
+            }
