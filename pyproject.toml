@@ -11,6 +11,7 @@ select = ["E", "F", "W", "I"]
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
+explicit_package_bases = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unused_configs = true
