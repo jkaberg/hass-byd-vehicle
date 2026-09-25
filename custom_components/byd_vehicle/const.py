@@ -24,6 +24,10 @@ CONF_COUNTRY_CODE = "country_code"
 CONF_LANGUAGE = "language"
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_GPS_POLL_INTERVAL = "gps_poll_interval"
+# Per-vehicle overrides ({vin: seconds}) written by the poll interval number
+# entities. The entry-level values above remain the fallback. See issue #189.
+CONF_POLL_INTERVAL_BY_VIN = "poll_interval_by_vin"
+CONF_GPS_POLL_INTERVAL_BY_VIN = "gps_poll_interval_by_vin"
 CONF_DEVICE_PROFILE = "device_profile"
 CONF_CONTROL_PIN = "control_pin"
 CONF_CLIMATE_DURATION = "climate_duration"

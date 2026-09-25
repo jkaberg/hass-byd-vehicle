@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTime
@@ -11,8 +14,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from pybyd.models.vehicle import Vehicle
 
 from .const import (
-    CONF_GPS_POLL_INTERVAL,
-    CONF_POLL_INTERVAL,
+    CONF_GPS_POLL_INTERVAL_BY_VIN,
+    CONF_POLL_INTERVAL_BY_VIN,
     DOMAIN,
     MAX_GPS_POLL_INTERVAL,
     MAX_POLL_INTERVAL,
@@ -21,6 +24,28 @@ from .const import (
 )
 from .coordinator import BydDataUpdateCoordinator, BydGpsUpdateCoordinator
 from .entity import BydVehicleEntity
+
+
+def _persist_vin_interval(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    key: str,
+    vin: str,
+    interval: int,
+) -> None:
+    """Store a per-vehicle poll interval in the entry options.
+
+    Intervals are per vehicle so that setting one car's number entity
+    never changes another car on the same account (issue #189).
+    """
+    current = entry.options.get(key)
+    by_vin: dict[str, Any] = dict(current) if isinstance(current, Mapping) else {}
+    if by_vin.get(vin) == interval:
+        return
+    by_vin[vin] = interval
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, key: by_vin}
+    )
 
 
 async def async_setup_entry(
@@ -94,13 +119,10 @@ class BydRealtimePollIntervalNumber(BydVehicleEntity, NumberEntity):
         """Set and persist realtime poll interval."""
         interval = max(MIN_POLL_INTERVAL, min(MAX_POLL_INTERVAL, int(value)))
 
-        entry_data = self.hass.data[DOMAIN][self._entry.entry_id]
-        for coordinator in entry_data["coordinators"].values():
-            coordinator.set_poll_interval(interval)
-
-        options = {**self._entry.options, CONF_POLL_INTERVAL: interval}
-        if options != self._entry.options:
-            self.hass.config_entries.async_update_entry(self._entry, options=options)
+        self.coordinator.set_poll_interval(interval)
+        _persist_vin_interval(
+            self.hass, self._entry, CONF_POLL_INTERVAL_BY_VIN, self._vin, interval
+        )
         self.async_write_ha_state()
 
 
@@ -142,11 +164,8 @@ class BydGpsPollIntervalNumber(BydVehicleEntity, NumberEntity):
         """Set and persist GPS poll interval."""
         interval = max(MIN_GPS_POLL_INTERVAL, min(MAX_GPS_POLL_INTERVAL, int(value)))
 
-        entry_data = self.hass.data[DOMAIN][self._entry.entry_id]
-        for gps_coordinator in entry_data["gps_coordinators"].values():
-            gps_coordinator.set_poll_interval(interval)
-
-        options = {**self._entry.options, CONF_GPS_POLL_INTERVAL: interval}
-        if options != self._entry.options:
-            self.hass.config_entries.async_update_entry(self._entry, options=options)
+        self._gps_coordinator.set_poll_interval(interval)
+        _persist_vin_interval(
+            self.hass, self._entry, CONF_GPS_POLL_INTERVAL_BY_VIN, self._vin, interval
+        )
         self.async_write_ha_state()
