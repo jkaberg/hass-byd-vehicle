@@ -2,7 +2,13 @@
 
 Home Assistant custom integration for BYD vehicles, powered by [pyBYD](https://github.com/jkaberg/pyBYD).
 
+[![GitHub Release](https://img.shields.io/github/v/release/jkaberg/hass-byd-vehicle)](https://github.com/jkaberg/hass-byd-vehicle/releases)
+[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
+[![Hassfest](https://github.com/jkaberg/hass-byd-vehicle/actions/workflows/hassfest.yaml/badge.svg)](https://github.com/jkaberg/hass-byd-vehicle/actions/workflows/hassfest.yaml)
+[![HACS Validation](https://github.com/jkaberg/hass-byd-vehicle/actions/workflows/hacs.yaml/badge.svg)](https://github.com/jkaberg/hass-byd-vehicle/actions/workflows/hacs.yaml)
+[![License](https://img.shields.io/github/license/jkaberg/hass-byd-vehicle)](LICENSE)
 [![Matrix](https://img.shields.io/matrix/hass-byd-vehicle%3Akaberg.me?server_fqdn=matrix.kaberg.me&fetchMode=summary)](https://matrix.to/#/#hass-byd-vehicle:kaberg.me)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/jkaberg)
 
 > [!NOTE]
 > The integration and pyBYD are nearing feature complete. A small number of API values still need final mapping/validation. Follow ongoing mapping work in pyBYD issue #20: https://github.com/jkaberg/pyBYD/issues/20
