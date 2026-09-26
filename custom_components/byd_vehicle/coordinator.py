@@ -428,6 +428,19 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
 
     _HVAC_FINAL_RECONCILE_RETRY_DELAY_SECONDS = 60
 
+    # While the car is parked and charging below this battery power (W),
+    # the session is treated as AC slow charging: SoC rises ~1% every
+    # 5-30 min, so polling at the configured interval mostly returns
+    # unchanged data.  The threshold sits above 11 kW three-phase AC
+    # wallboxes (the on-board charger limit on most BYD models) and
+    # below DC fast charging.  A DC session tapering below it is slowed
+    # too, which is fine: SoC rises just as slowly there.
+    _AC_SLOW_CHARGE_THRESHOLD_W = 12000.0
+    _AC_SLOW_CHARGE_MULTIPLIER = 4
+    # Never stretch the interval past this while charging, and never
+    # make it shorter than what the user configured.
+    _AC_SLOW_CHARGE_MAX_INTERVAL = timedelta(minutes=20)
+
     # Override parent annotations: ``data`` is None until first refresh,
     # and we assign ``update_interval = None`` to pause polling (HA
     # accepts None at runtime; the stub doesn't mark it Optional).
@@ -476,6 +489,7 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
         """Update from a state-engine push and reset next poll from this update."""
         previous_snapshot = self.data
         self._schedule_hvac_final_reconcile_if_needed(previous_snapshot, snapshot)
+        self._apply_charge_cadence(snapshot)
 
         previous_timestamp = None
         if previous_snapshot is not None and previous_snapshot.realtime is not None:
@@ -731,6 +745,8 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
                 self._api.async_write_debug_dump("telemetry", dump)
             )
 
+        self._apply_charge_cadence(snapshot)
+
         _LOGGER.debug(
             "Telemetry refresh succeeded: vin=%s, realtime=%s, hvac=%s",
             self._vin[-6:],
@@ -742,6 +758,49 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
     # ------------------------------------------------------------------
     # Polling control
     # ------------------------------------------------------------------
+
+    @classmethod
+    def _is_ac_slow_charging(cls, snapshot: VehicleSnapshot | None) -> bool:
+        """Whether the car is parked and charging below the AC threshold."""
+        if snapshot is None or snapshot.realtime is None:
+            return False
+        realtime = snapshot.realtime
+        if realtime.is_vehicle_on:
+            return False
+        # Several EU trims report ``chargingState=-1`` in realtime, so the
+        # charging endpoint is checked too (same source as the plug sensor).
+        charging = snapshot.charging
+        is_charging = realtime.is_charging or (
+            charging is not None and charging.is_charging
+        )
+        if not is_charging or realtime.gl is None:
+            return False
+        return abs(realtime.gl) < cls._AC_SLOW_CHARGE_THRESHOLD_W
+
+    def _interval_for(self, snapshot: VehicleSnapshot | None) -> timedelta:
+        """Return the poll interval to use for the given snapshot."""
+        if not self._is_ac_slow_charging(snapshot):
+            return self._fixed_interval
+        slowed = min(
+            self._fixed_interval * self._AC_SLOW_CHARGE_MULTIPLIER,
+            self._AC_SLOW_CHARGE_MAX_INTERVAL,
+        )
+        return max(self._fixed_interval, slowed)
+
+    @callback
+    def _apply_charge_cadence(self, snapshot: VehicleSnapshot | None) -> None:
+        """Slow polling down during AC charging, restore it afterwards."""
+        if not self._polling_enabled:
+            return
+        interval = self._interval_for(snapshot)
+        if interval != self.update_interval:
+            _LOGGER.debug(
+                "Poll interval changed: vin=%s, interval=%ss, ac_slow_charging=%s",
+                self._vin[-6:],
+                int(interval.total_seconds()),
+                interval != self._fixed_interval,
+            )
+            self.update_interval = interval
 
     @property
     def polling_enabled(self) -> bool:
@@ -756,7 +815,7 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
         """Set telemetry poll interval in seconds."""
         self._fixed_interval = timedelta(seconds=seconds)
         if self._polling_enabled:
-            self.update_interval = self._fixed_interval
+            self.update_interval = self._interval_for(self.data)
         self.async_update_listeners()
 
     def set_polling_enabled(self, enabled: bool) -> bool:
@@ -764,7 +823,9 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
         self._polling_enabled = bool(enabled)
         if not self._polling_enabled:
             self._cancel_pending_hvac_final_retry()
-        self.update_interval = self._fixed_interval if self._polling_enabled else None
+        self.update_interval = (
+            self._interval_for(self.data) if self._polling_enabled else None
+        )
         return not was_enabled and self._polling_enabled
 
     async def async_set_polling_enabled(self, enabled: bool) -> None:
