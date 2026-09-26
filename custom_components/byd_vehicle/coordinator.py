@@ -430,10 +430,12 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
 
     # While the car is parked and charging below this battery power (W),
     # the session is treated as AC slow charging: SoC rises ~1% every
-    # ~12 min, so polling at the configured interval mostly returns
-    # unchanged data.  The threshold sits between a Schuko socket
-    # (~2.3 kW) and the smallest DC fast chargers (~25 kW).
-    _AC_SLOW_CHARGE_THRESHOLD_W = 5000.0
+    # 5-30 min, so polling at the configured interval mostly returns
+    # unchanged data.  The threshold sits above 11 kW three-phase AC
+    # wallboxes (the on-board charger limit on most BYD models) and
+    # below DC fast charging.  A DC session tapering below it is slowed
+    # too, which is fine: SoC rises just as slowly there.
+    _AC_SLOW_CHARGE_THRESHOLD_W = 12000.0
     _AC_SLOW_CHARGE_MULTIPLIER = 4
     # Never stretch the interval past this while charging, and never
     # make it shorter than what the user configured.
