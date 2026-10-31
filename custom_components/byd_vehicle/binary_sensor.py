@@ -103,9 +103,10 @@ def _tire_status_with_sentinel_guard(attr_name: str) -> Callable[[Any], bool | N
 
     The cross-field signature of the sentinel-mode payload is *all four
     corners reading 0 simultaneously and the ``tirepressure_system``
-    flag also reading 0*.  When that matches, return ``None`` so the
-    sensor reads ``unavailable``.  Any single non-zero corner is treated
-    as a real fault and passes through normally.
+    flag also reading 0*.  When that matches, return ``None`` until a
+    previous warning establishes that this sensor works; the entity can
+    then clear that warning on a complete all-zero payload.  Any single
+    non-zero corner is treated as a real fault and passes through normally.
     """
 
     def _fn(obj: Any) -> bool | None:
@@ -547,12 +548,18 @@ class BydBinarySensor(BydVehicleEntity, BinarySensorEntity, RestoreEntity):
         """Restore last known is_on value before the coordinator binds."""
         await super().async_added_to_hass()
         last = await self.async_get_last_state()
-        if last is None:
-            return
-        if last.state == STATE_ON:
-            self._last_is_on = True
-        elif last.state == "off":
-            self._last_is_on = False
+        if last is not None:
+            if last.state == STATE_ON:
+                self._last_is_on = True
+            elif last.state == "off":
+                self._last_is_on = False
+
+        if self.entity_description.key in _TIRE_STATUS_CORNERS:
+            # Remember a warning already present when the entity is added,
+            # even if the first coordinator update is the healthy payload.
+            value = self._resolve_value()
+            if value is not None:
+                self._last_is_on = value
 
     # ------------------------------------------------------------------
     # Helpers
@@ -564,7 +571,19 @@ class BydBinarySensor(BydVehicleEntity, BinarySensorEntity, RestoreEntity):
         if obj is None:
             return None
         if self.entity_description.value_fn is not None:
-            return self.entity_description.value_fn(obj)
+            value = self.entity_description.value_fn(obj)
+            if (
+                value is None
+                and self.entity_description.key in _TIRE_STATUS_CORNERS
+                and self._last_is_on is True
+                and all(
+                    getattr(obj, field, None) == 0
+                    for field in (*_TIRE_STATUS_CORNERS, "tirepressure_system")
+                )
+            ):
+                # A known warning can clear; missing fields cannot clear it.
+                return False
+            return value
         attr = self.entity_description.attr_key or self.entity_description.key
         value = getattr(obj, attr, None)
         if value is None:
