@@ -106,7 +106,7 @@ SEAT_CLIMATE_DESCRIPTIONS: tuple[BydSeatClimateDescription, ...] = (
         seat_position=None,
         mode="heat",
         hvac_attr="lr_seat_heat_state",
-        capability_key=None,
+        capability_key="rear_left_seat_heat",
         entity_registry_enabled_default=False,
     ),
     BydSeatClimateDescription(
@@ -124,7 +124,7 @@ SEAT_CLIMATE_DESCRIPTIONS: tuple[BydSeatClimateDescription, ...] = (
         seat_position=None,
         mode="heat",
         hvac_attr="rr_seat_heat_state",
-        capability_key=None,
+        capability_key="rear_right_seat_heat",
         entity_registry_enabled_default=False,
     ),
     BydSeatClimateDescription(
