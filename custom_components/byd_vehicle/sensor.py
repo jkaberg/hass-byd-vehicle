@@ -1161,6 +1161,41 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
 )
 
 
+class BydLatestNotificationSensor(BydVehicleEntity, SensorEntity):
+    """Expose the newest account inbox notification as a sensor."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Latest notification"
+    _attr_icon = "mdi:email-outline"
+
+    def __init__(self, coordinator: BydDataUpdateCoordinator) -> None:
+        self._vin = coordinator.vin
+        self._vehicle = coordinator.vehicle
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.vin}_latest_notification"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return latest notification title, if available."""
+        messages = getattr(self.coordinator, "notifications", ())
+        return messages[0].title if messages else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose message text and timestamp without message/account identifiers."""
+        attributes = super().extra_state_attributes
+        messages = getattr(self.coordinator, "notifications", ())
+        if messages:
+            attributes.update(
+                {
+                    "content": messages[0].content,
+                    "timestamp": str(messages[0].push_time),
+                    "category": "vehicle",
+                }
+            )
+        return attributes
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -1173,6 +1208,7 @@ async def async_setup_entry(
 
     entities: list[SensorEntity] = []
     for vin, coordinator in coordinators.items():
+        entities.append(BydLatestNotificationSensor(coordinator))
         vehicle = coordinator.vehicle
         for description in SENSOR_DESCRIPTIONS:
             if description.key == "gps_last_updated":

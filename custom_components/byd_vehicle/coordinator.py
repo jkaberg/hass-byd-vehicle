@@ -9,6 +9,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
+from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -97,6 +98,9 @@ class BydApi:
         )
         self._debug_dump_dir = Path(hass.config.path(".storage/byd_vehicle_debug"))
         self._coordinators: dict[str, BydDataUpdateCoordinator] = {}
+        self._notifications: list[Any] = []
+        self._notifications_fetched_at: datetime | None = None
+        self._notified_message_ids: set[str] = set()
         self._gps_coordinators: dict[str, BydGpsUpdateCoordinator] = {}
         _LOGGER.debug(
             "BYD API initialized: entry_id=%s, region=%s, language=%s, mqtt=%s",
@@ -303,6 +307,45 @@ class BydApi:
             self._client = None
             self._commands_enabled = False
 
+    async def async_get_notifications(self) -> list[Any]:
+        """Fetch the account inbox at most once per configured poll window."""
+        now = datetime.now(tz=UTC)
+        if (
+            self._notifications_fetched_at
+            and now - self._notifications_fetched_at < timedelta(minutes=15)
+        ):
+            return self._notifications
+        client = await self._ensure_client()
+        fetch = getattr(client, "get_notifications", None)
+        if fetch is None:
+            return self._notifications
+        from pybyd.models.message_center import NotificationCategory
+
+        messages = await fetch(NotificationCategory.VEHICLE)
+        new_notification_count = 0
+        for message in messages:
+            message_id = str(message.message_id)
+            if message_id in self._notified_message_ids:
+                continue
+            persistent_notification.async_create(
+                self._hass,
+                message.content or message.title or "New BYD vehicle message",
+                title=f"BYD Vehicle: {message.title or 'Vehicle message'}",
+                notification_id=(
+                    f"{DOMAIN}_{self._entry.entry_id}_message_{message_id}"
+                ),
+            )
+            self._notified_message_ids.add(message_id)
+            new_notification_count += 1
+        if new_notification_count:
+            _LOGGER.debug(
+                "Published %d new BYD inbox notification(s) in Home Assistant",
+                new_notification_count,
+            )
+        self._notifications = messages
+        self._notifications_fetched_at = now
+        return messages
+
     async def async_get_car(self, vin: str, vehicle: Vehicle) -> BydCar:
         """Obtain a ``BydCar`` aggregate for *vin*.
 
@@ -472,6 +515,7 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
         self._polling_enabled = True
         self._force_next_refresh = False
         self._car: BydCar | None = None
+        self.notifications: list[Any] = []
         self._realtime_endpoint_unsupported: bool = False
         # ``getEnergyConsumption`` returns ``code=1001`` on several VINs
         # (notably the Sealion 7 EU trim).  pyBYD translates that to
@@ -728,6 +772,13 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
                 self._vin,
                 exc,
             )
+
+        try:
+            self.notifications = await self._api.async_get_notifications()
+        except _AUTH_ERRORS:
+            raise
+        except _RECOVERABLE_ERRORS as exc:
+            _LOGGER.debug("Inbox fetch failed: vin=%s error=%s", self._vin[-6:], exc)
 
         snapshot = car.state
         self._schedule_hvac_final_reconcile_if_needed(previous_snapshot, snapshot)
