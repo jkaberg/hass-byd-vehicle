@@ -483,6 +483,9 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
         self.update_pending: bool = False
         self._debounce_timer: CALLBACK_TYPE | None = None
         self._pending_schedule_updates: dict[str, Any] = {}
+        # Air source for remote climate starts: True = fresh (outside) air,
+        # False = recirculate (BYD's default).  Set by the fresh-air switch.
+        self.climate_fresh_air: bool = False
 
     # ------------------------------------------------------------------
     # State-engine push
