@@ -64,6 +64,9 @@ class BydClimate(BydActionEntity, ClimateEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "climate"
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT_COOL]
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
+    # pre-2026.11 HA only reads the non-native names; HA 2026.11 serves the
+    # native ones without a deprecation warning when a class sets both
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_supported_features = (
         ClimateEntityFeature.TURN_ON
@@ -145,7 +148,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
         return self._get_hvac_status() is None
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return the current interior temperature."""
         hvac = self._get_hvac_status()
         if hvac is not None and hvac.interior_temp_available:
@@ -158,7 +161,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
         return None
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the target temperature."""
         hvac = self._get_hvac_status()
         if hvac is not None:
@@ -167,6 +170,9 @@ class BydClimate(BydActionEntity, ClimateEntity):
                 return temp_c
         temp_min, temp_max = self._temp_range
         return max(temp_min, min(temp_max, self._DEFAULT_TEMP_C))
+
+    current_temperature = native_current_temperature
+    target_temperature = native_target_temperature
 
     @property
     def preset_mode(self) -> str | None:
