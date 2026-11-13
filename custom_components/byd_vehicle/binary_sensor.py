@@ -35,6 +35,9 @@ class BydBinarySensorDescription(BinarySensorEntityDescription):
     source: str = "realtime"
     attr_key: str | None = None
     value_fn: Callable[[Any], bool | None] | None = None
+    # value_fn returns None on a sentinel reading; a raw 0 then clears a
+    # fault already seen, since the car has shown it reports real statuses.
+    zero_clears_fault: bool = False
 
 
 def _is_charging_from_realtime(obj: Any) -> bool | None:
@@ -106,7 +109,9 @@ def _tire_status_with_sentinel_guard(attr_name: str) -> Callable[[Any], bool | N
     corners reading 0 simultaneously and the ``tirepressure_system``
     flag also reading 0*.  When that matches, return ``None`` so the
     sensor reads ``unavailable``.  Any single non-zero corner is treated
-    as a real fault and passes through normally.
+    as a real fault and passes through normally.  A healthy car reads the
+    same once a fault clears, so the entity turns a sensor that was on back
+    off (``zero_clears_fault``).
     """
 
     def _fn(obj: Any) -> bool | None:
@@ -380,6 +385,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_tire_status_with_sentinel_guard("left_front_tire_status"),
+        zero_clears_fault=True,
     ),
     BydBinarySensorDescription(
         key="right_front_tire_status",
@@ -389,6 +395,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_tire_status_with_sentinel_guard("right_front_tire_status"),
+        zero_clears_fault=True,
     ),
     BydBinarySensorDescription(
         key="left_rear_tire_status",
@@ -398,6 +405,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_tire_status_with_sentinel_guard("left_rear_tire_status"),
+        zero_clears_fault=True,
     ),
     BydBinarySensorDescription(
         key="right_rear_tire_status",
@@ -407,6 +415,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_tire_status_with_sentinel_guard("right_rear_tire_status"),
+        zero_clears_fault=True,
     ),
     BydBinarySensorDescription(
         key="upgrade_status",
@@ -565,7 +574,15 @@ class BydBinarySensor(BydVehicleEntity, BinarySensorEntity, RestoreEntity):
         if obj is None:
             return None
         if self.entity_description.value_fn is not None:
-            return self.entity_description.value_fn(obj)
+            value = self.entity_description.value_fn(obj)
+            if (
+                value is None
+                and self.entity_description.zero_clears_fault
+                and self._last_is_on is True
+                and getattr(obj, self.entity_description.key, None) == 0
+            ):
+                return False
+            return value
         attr = self.entity_description.attr_key or self.entity_description.key
         value = getattr(obj, attr, None)
         if value is None:
