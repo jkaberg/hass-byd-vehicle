@@ -31,7 +31,11 @@ def _sensor(obj: Any, last_is_on: bool | None) -> BydBinarySensor:
     sensor = BydBinarySensor.__new__(BydBinarySensor)
     sensor.entity_description = _DESC
     sensor._last_is_on = last_is_on
-    sensor._get_source_obj = lambda _source: obj  # type: ignore[method-assign]
+
+    def _source(_name: str) -> Any:
+        return obj
+
+    sensor._get_source_obj = _source  # type: ignore[method-assign,assignment]
     return sensor
 
 
