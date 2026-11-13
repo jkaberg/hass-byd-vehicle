@@ -18,6 +18,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from pybyd.models.realtime import (
     DoorOpenState,
+    SentryStatus,
     WindowState,
 )
 from pybyd.models.vehicle import Vehicle
@@ -175,7 +176,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         key="sentry_status",
         source="realtime",
         icon="mdi:shield-car",
-        value_fn=_attr_truthy("sentry_status"),
+        value_fn=_attr_equals("sentry_status", SentryStatus.ON),
     ),
     # ====================================
     # Individual doors (disabled)
