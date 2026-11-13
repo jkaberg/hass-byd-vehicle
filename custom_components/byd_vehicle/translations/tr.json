@@ -420,6 +420,9 @@
       "car_on": {
         "name": "Klima açık"
       },
+      "climate_fresh_air": {
+        "name": "Klima dış hava"
+      },
       "steering_wheel_heat": {
         "name": "Direksiyon ısıtması"
       },

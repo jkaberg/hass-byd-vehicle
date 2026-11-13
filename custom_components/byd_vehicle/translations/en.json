@@ -585,6 +585,9 @@
       "car_on": {
         "name": "A/C on"
       },
+      "climate_fresh_air": {
+        "name": "Climate fresh air"
+      },
       "steering_wheel_heat": {
         "name": "Steering wheel heating"
       },

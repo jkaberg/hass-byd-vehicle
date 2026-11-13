@@ -21,6 +21,10 @@ from .const import (
 from .coordinator import BydDataUpdateCoordinator
 from .entity import BydActionEntity
 
+# controlParamsMap ``cycleMode``: 1 = fresh (outside) air, 2 = recirculate.
+_CYCLE_FRESH_AIR = 1
+_CYCLE_RECIRCULATE = 2
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -188,6 +192,34 @@ class BydClimate(BydActionEntity, ClimateEntity):
     # Commands — delegate to BydCar.hvac
     # ------------------------------------------------------------------
 
+    def _start_climate(self, car: Any, temperature: float) -> Any:
+        """Return the coroutine that starts climate with our air source.
+
+        Fresh air (the fresh-air switch) helps clear fogged windows; BYD's
+        remote start otherwise recirculates.  Older pyBYD versions have no
+        ``cycle_mode`` argument, so they always recirculate.
+        """
+        cycle_mode = (
+            _CYCLE_FRESH_AIR
+            if getattr(self.coordinator, "climate_fresh_air", False)
+            else _CYCLE_RECIRCULATE
+        )
+        try:
+            return car.hvac.start(
+                temperature=temperature,
+                duration=self._climate_duration,
+                cycle_mode=cycle_mode,
+            )
+        except TypeError:
+            if cycle_mode == _CYCLE_RECIRCULATE:
+                return car.hvac.start(
+                    temperature=temperature,
+                    duration=self._climate_duration,
+                )
+            return _start_with_cycle_mode(
+                car.hvac, temperature, self._climate_duration, cycle_mode
+            )
+
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set HVAC mode (on/off)."""
         car = self.coordinator.car
@@ -201,10 +233,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
         else:
             temp = self.target_temperature or self._DEFAULT_TEMP_C
             await self._execute_car_command(
-                car.hvac.start(
-                    temperature=temp,
-                    duration=self._climate_duration,
-                ),
+                self._start_climate(car, temp),
                 command="start_climate",
             )
 
@@ -223,10 +252,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
             if car is None:
                 return
             await self._execute_car_command(
-                car.hvac.start(
-                    temperature=clamped,
-                    duration=self._climate_duration,
-                ),
+                self._start_climate(car, clamped),
                 command="start_climate",
             )
 
@@ -241,10 +267,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
         if car is None:
             return
         await self._execute_car_command(
-            car.hvac.start(
-                temperature=temp_c,
-                duration=self._climate_duration,
-            ),
+            self._start_climate(car, temp_c),
             command="start_climate",
         )
 
@@ -271,3 +294,35 @@ class BydClimate(BydActionEntity, ClimateEntity):
             attrs["rapid_heating"] = hvac.rapid_increase_temp_state
             attrs["rapid_cooling"] = hvac.rapid_decrease_temp_state
         return attrs
+
+
+async def _start_with_cycle_mode(
+    hvac: Any, temperature: float, duration: int, cycle_mode: int
+) -> None:
+    """``HvacCapability.start`` with a ``cycleMode``, for pyBYD <= 0.0.79.
+
+    Same steps as pyBYD's own ``start`` (availability check, projections,
+    command through ``_execute``); only ``cycle_mode`` is added to the
+    params.  Drop this once pyBYD's ``start`` takes ``cycle_mode``.
+    """
+    from pybyd._constants import minutes_to_time_span
+    from pybyd._state_engine import ProjectionSpec
+    from pybyd.models.control import ClimateStartParams
+    from pybyd.models.hvac import HvacOverallStatus
+
+    hvac._ensure_available()
+    params = ClimateStartParams(
+        temperature=temperature,
+        time_span=minutes_to_time_span(duration),
+        temp_offset=hvac.temp_offset,
+        cycle_mode=cycle_mode,
+    )
+    specs = [
+        ProjectionSpec("hvac", "status", HvacOverallStatus.ON),
+        ProjectionSpec("hvac", "main_setting_temp_new", temperature),
+    ]
+
+    async def _cmd() -> Any:
+        return await hvac._start_fn(hvac._vin, params=params)
+
+    await hvac._execute(_cmd, specs)
