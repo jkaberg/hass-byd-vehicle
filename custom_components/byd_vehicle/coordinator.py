@@ -458,7 +458,54 @@ class BydApi:
             raise
 
 
-class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
+class _ReschedulingCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
+    """DataUpdateCoordinator that can bring its pending refresh forward.
+
+    DataUpdateCoordinator only reads ``update_interval`` when it schedules the
+    next refresh, so a shorter interval otherwise waits out the old one (eg
+    3600 s cut to 120 s still polls up to an hour later).
+    """
+
+    _refresh_due: float | None = None
+
+    @callback
+    def _schedule_refresh(self) -> None:
+        """Schedule a refresh and remember when it is due."""
+        delay = (
+            self._retry_after
+            if self._retry_after is not None
+            else self._update_interval_seconds
+        )
+        super()._schedule_refresh()
+        if self._unsub_refresh is None or delay is None:
+            self._refresh_due = None
+        else:
+            # Same sum as DataUpdateCoordinator._schedule_refresh.
+            self._refresh_due = int(self.hass.loop.time()) + self._microsecond + delay
+
+    def _bring_pending_refresh_forward(self, kind: str, vin: str) -> None:
+        """Reschedule the pending refresh if the current interval makes it sooner.
+
+        It is never pushed back: a longer or unchanged interval applies from
+        the next refresh, as before.  A running refresh schedules the next one
+        itself.
+        """
+        interval = self._update_interval_seconds
+        due = self._refresh_due
+        if interval is None or due is None or self._unsub_refresh is None:
+            return
+        if int(self.hass.loop.time()) + self._microsecond + interval >= due:
+            return
+        _LOGGER.debug(
+            "Pending %s refresh brought forward: vin=%s, interval=%ss",
+            kind,
+            vin[-6:],
+            int(interval),
+        )
+        self._schedule_refresh()
+
+
+class BydDataUpdateCoordinator(_ReschedulingCoordinator):
     """Coordinator for telemetry + HVAC updates for a single VIN.
 
     Holds a ``BydCar`` reference (set after first refresh).
@@ -527,6 +574,9 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
         self.update_pending: bool = False
         self._debounce_timer: CALLBACK_TYPE | None = None
         self._pending_schedule_updates: dict[str, Any] = {}
+        # Air source for remote climate starts: True = fresh (outside) air,
+        # False = recirculate (BYD's default).  Set by the fresh-air switch.
+        self.climate_fresh_air: bool = False
 
     # ------------------------------------------------------------------
     # State-engine push
@@ -871,6 +921,7 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
         self._fixed_interval = timedelta(seconds=seconds)
         if self._polling_enabled:
             self.update_interval = self._interval_for(self.data)
+            self._bring_pending_refresh_forward("telemetry", self._vin)
         self.async_update_listeners()
 
     def set_polling_enabled(self, enabled: bool) -> bool:
@@ -1196,7 +1247,7 @@ class BydDataUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
             )
 
 
-class BydGpsUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
+class BydGpsUpdateCoordinator(_ReschedulingCoordinator):
     """Coordinator for GPS updates for a single VIN.
 
     Uses the ``BydCar`` from the telemetry coordinator so GPS data flows
@@ -1246,6 +1297,7 @@ class BydGpsUpdateCoordinator(DataUpdateCoordinator[VehicleSnapshot]):
         self._fixed_interval = timedelta(seconds=seconds)
         if self._polling_enabled:
             self.update_interval = self._fixed_interval
+            self._bring_pending_refresh_forward("GPS", self._vin)
         self.async_update_listeners()
 
     def set_polling_enabled(self, enabled: bool) -> bool:

@@ -41,6 +41,8 @@ async def async_setup_entry(
         if coordinator.capability_available("steering_wheel_heat"):
             entities.append(BydSteeringWheelHeatSwitch(coordinator, vin, vehicle))
 
+        if coordinator.capability_available("climate"):
+            entities.append(BydClimateFreshAirSwitch(coordinator, vin, vehicle))
         entities.append(BydScheduleEnabledSwitch(coordinator, vin, vehicle))
         entities.append(BydChargeToFullSwitch(coordinator, vin, vehicle))
         entities.append(BydRepeatDailySwitch(coordinator, vin, vehicle))
@@ -447,3 +449,51 @@ class BydRepeatDailySwitch(BydVehicleEntity, SwitchEntity):
         self._optimistic_state = False
         self.async_write_ha_state()
         await self.coordinator.async_request_schedule_update("pattern", "s")
+
+
+class BydClimateFreshAirSwitch(BydVehicleEntity, RestoreEntity, SwitchEntity):
+    """Use fresh (outside) air instead of recirculation for remote climate.
+
+    A setting, not a live state: it decides the ``cycleMode`` sent with the
+    next remote climate start (the car itself reports what it is doing in
+    the climate entity's ``recirculation`` attribute).  Fresh air clears
+    fogged windows faster; BYD's remote start recirculates by default.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "climate_fresh_air"
+    _attr_icon = "mdi:air-filter"
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: BydDataUpdateCoordinator,
+        vin: str,
+        vehicle: Vehicle,
+    ) -> None:
+        super().__init__(coordinator)
+        self._vin = vin
+        self._vehicle = vehicle
+        self._attr_unique_id = f"{vin}_switch_climate_fresh_air"
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the last setting on startup."""
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is not None:
+            self.coordinator.climate_fresh_air = last.state == "on"
+
+    @property
+    def is_on(self) -> bool:
+        """Return True when remote climate starts use fresh air."""
+        return self.coordinator.climate_fresh_air
+
+    async def async_turn_on(self, **_kwargs: Any) -> None:
+        """Use fresh air for remote climate starts."""
+        self.coordinator.climate_fresh_air = True
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **_kwargs: Any) -> None:
+        """Recirculate for remote climate starts (BYD default)."""
+        self.coordinator.climate_fresh_air = False
+        self.async_write_ha_state()

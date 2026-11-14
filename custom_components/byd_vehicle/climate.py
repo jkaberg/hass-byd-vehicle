@@ -21,6 +21,10 @@ from .const import (
 from .coordinator import BydDataUpdateCoordinator
 from .entity import BydActionEntity
 
+# controlParamsMap ``cycleMode``: 1 = fresh (outside) air, 2 = recirculate.
+_CYCLE_FRESH_AIR = 1
+_CYCLE_RECIRCULATE = 2
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -64,6 +68,9 @@ class BydClimate(BydActionEntity, ClimateEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "climate"
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT_COOL]
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
+    # pre-2026.11 HA only reads the non-native names; HA 2026.11 serves the
+    # native ones without a deprecation warning when a class sets both
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_supported_features = (
         ClimateEntityFeature.TURN_ON
@@ -145,7 +152,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
         return self._get_hvac_status() is None
 
     @property
-    def current_temperature(self) -> float | None:
+    def native_current_temperature(self) -> float | None:
         """Return the current interior temperature."""
         hvac = self._get_hvac_status()
         if hvac is not None and hvac.interior_temp_available:
@@ -158,7 +165,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
         return None
 
     @property
-    def target_temperature(self) -> float | None:
+    def native_target_temperature(self) -> float | None:
         """Return the target temperature."""
         hvac = self._get_hvac_status()
         if hvac is not None:
@@ -167,6 +174,9 @@ class BydClimate(BydActionEntity, ClimateEntity):
                 return temp_c
         temp_min, temp_max = self._temp_range
         return max(temp_min, min(temp_max, self._DEFAULT_TEMP_C))
+
+    current_temperature = native_current_temperature
+    target_temperature = native_target_temperature
 
     @property
     def preset_mode(self) -> str | None:
@@ -182,6 +192,19 @@ class BydClimate(BydActionEntity, ClimateEntity):
     # Commands — delegate to BydCar.hvac
     # ------------------------------------------------------------------
 
+    def _start_climate(self, car: Any, temperature: float) -> Any:
+        """Return the coroutine that starts climate with our air source."""
+        cycle_mode = (
+            _CYCLE_FRESH_AIR
+            if getattr(self.coordinator, "climate_fresh_air", False)
+            else _CYCLE_RECIRCULATE
+        )
+        return car.hvac.start(
+            temperature=temperature,
+            duration=self._climate_duration,
+            cycle_mode=cycle_mode,
+        )
+
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set HVAC mode (on/off)."""
         car = self.coordinator.car
@@ -195,10 +218,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
         else:
             temp = self.target_temperature or self._DEFAULT_TEMP_C
             await self._execute_car_command(
-                car.hvac.start(
-                    temperature=temp,
-                    duration=self._climate_duration,
-                ),
+                self._start_climate(car, temp),
                 command="start_climate",
             )
 
@@ -217,10 +237,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
             if car is None:
                 return
             await self._execute_car_command(
-                car.hvac.start(
-                    temperature=clamped,
-                    duration=self._climate_duration,
-                ),
+                self._start_climate(car, clamped),
                 command="start_climate",
             )
 
@@ -235,10 +252,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
         if car is None:
             return
         await self._execute_car_command(
-            car.hvac.start(
-                temperature=temp_c,
-                duration=self._climate_duration,
-            ),
+            self._start_climate(car, temp_c),
             command="start_climate",
         )
 
