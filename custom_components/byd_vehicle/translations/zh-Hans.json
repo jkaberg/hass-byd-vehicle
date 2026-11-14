@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS 非活动间隔（秒）",
           "climate_duration": "空调持续时间 (time_span)",
           "mqtt_enabled": "MQTT 推送更新",
+          "inbox_notifications": "将 BYD 收件箱消息显示为通知",
           "debug_dumps": "调试转储API响应"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "最新通知"
       }
     },
     "binary_sensor": {

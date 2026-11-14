@@ -51,6 +51,8 @@ Configuration is UI-only via Home Assistant config flow.
 | Country | Yes | United Kingdom | Country used for country code and language. |
 | Control PIN | No | — | Optional PIN used for remote commands. |
 | Climate duration | No | 10 | Climate run time in minutes. |
+| MQTT push updates | No | On | Receives command results and telemetry pushes over MQTT. |
+| Show BYD inbox messages as notifications | No | Off | Polls the account inbox (at most every 15 min) and posts new messages, eg charging started/stopped, as HA notifications. Adds a "Latest notification" sensor. |
 | Debug dump API responses | No | Off | Writes API request/response traces for troubleshooting. |
 
 > [!TIP]

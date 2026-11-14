@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS passiivinen väli (sekuntia)",
           "climate_duration": "Ilmastoinnin kesto (time_span)",
           "mqtt_enabled": "MQTT-push-päivitykset",
+          "inbox_notifications": "Näytä BYD-saapuneet viestit ilmoituksina",
           "debug_dumps": "API-vastausten virheenkorjausvedos"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "Viimeisin ilmoitus"
       }
     },
     "binary_sensor": {

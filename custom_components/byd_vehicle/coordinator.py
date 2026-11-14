@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import UTC, datetime, timedelta
@@ -14,6 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
@@ -32,9 +34,11 @@ from pybyd import (
     BydTransportError,
     CommandAckEvent,
     CommandLifecycleEvent,
+    NotificationCategory,
     VehicleSnapshot,
 )
 from pybyd.config import BydConfig, DeviceProfile
+from pybyd.models.message_center import VehicleMsgItemInfo
 from pybyd.models.vehicle import Vehicle
 
 from .const import (
@@ -43,9 +47,11 @@ from .const import (
     CONF_COUNTRY_CODE,
     CONF_DEBUG_DUMPS,
     CONF_DEVICE_PROFILE,
+    CONF_INBOX_NOTIFICATIONS,
     CONF_LANGUAGE,
     CONF_MQTT_ENABLED,
     DEFAULT_DEBUG_DUMPS,
+    DEFAULT_INBOX_NOTIFICATIONS,
     DEFAULT_LANGUAGE,
     DEFAULT_MQTT_ENABLED,
     DOMAIN,
@@ -56,6 +62,9 @@ _LOGGER = logging.getLogger(__name__)
 _HA_EVENT_COMMAND_LIFECYCLE: str = f"{DOMAIN}_command_lifecycle"
 
 _AUTH_ERRORS = (BydAuthenticationError, BydSessionExpiredError)
+# The inbox is account-wide, so one fetch serves every vehicle on the entry.
+_INBOX_FETCH_INTERVAL = timedelta(minutes=15)
+_INBOX_STORE_VERSION = 1
 _RECOVERABLE_ERRORS = (
     BydApiError,
     BydTransportError,
@@ -98,9 +107,15 @@ class BydApi:
         )
         self._debug_dump_dir = Path(hass.config.path(".storage/byd_vehicle_debug"))
         self._coordinators: dict[str, BydDataUpdateCoordinator] = {}
-        self._notifications: list[Any] = []
-        self._notifications_fetched_at: datetime | None = None
-        self._notified_message_ids: set[str] = set()
+        self._inbox_enabled: bool = entry.options.get(
+            CONF_INBOX_NOTIFICATIONS,
+            DEFAULT_INBOX_NOTIFICATIONS,
+        )
+        self._inbox_store: Store[list[str]] | None = None
+        self._inbox_lock = asyncio.Lock()
+        self._inbox_messages: list[VehicleMsgItemInfo] = []
+        self._inbox_fetched_at: datetime | None = None
+        self._inbox_seen_ids: set[str] | None = None
         self._gps_coordinators: dict[str, BydGpsUpdateCoordinator] = {}
         _LOGGER.debug(
             "BYD API initialized: entry_id=%s, region=%s, language=%s, mqtt=%s",
@@ -307,44 +322,81 @@ class BydApi:
             self._client = None
             self._commands_enabled = False
 
-    async def async_get_notifications(self) -> list[Any]:
-        """Fetch the account inbox at most once per configured poll window."""
-        now = datetime.now(tz=UTC)
-        if (
-            self._notifications_fetched_at
-            and now - self._notifications_fetched_at < timedelta(minutes=15)
-        ):
-            return self._notifications
-        client = await self._ensure_client()
-        fetch = getattr(client, "get_notifications", None)
-        if fetch is None:
-            return self._notifications
-        from pybyd.models.message_center import NotificationCategory
+    @property
+    def inbox_enabled(self) -> bool:
+        """Return whether BYD inbox messages are surfaced in Home Assistant."""
+        return self._inbox_enabled
 
-        messages = await fetch(NotificationCategory.VEHICLE)
-        new_notification_count = 0
-        for message in messages:
-            message_id = str(message.message_id)
-            if message_id in self._notified_message_ids:
-                continue
-            persistent_notification.async_create(
-                self._hass,
-                message.content or message.title or "New BYD vehicle message",
-                title=f"BYD Vehicle: {message.title or 'Vehicle message'}",
-                notification_id=(
-                    f"{DOMAIN}_{self._entry.entry_id}_message_{message_id}"
-                ),
+    @property
+    def inbox_messages(self) -> list[VehicleMsgItemInfo]:
+        """Return the last fetched unread inbox messages, newest first."""
+        return self._inbox_messages
+
+    async def async_refresh_inbox(self) -> None:
+        """Fetch the account inbox and notify about messages not seen before.
+
+        Runs at most once per ``_INBOX_FETCH_INTERVAL``. Seen message ids are
+        persisted so a restart doesn't re-notify messages still unread in
+        the app.
+        """
+        if not self._inbox_enabled:
+            return
+        async with self._inbox_lock:
+            now = datetime.now(tz=UTC)
+            if (
+                self._inbox_fetched_at is not None
+                and now - self._inbox_fetched_at < _INBOX_FETCH_INTERVAL
+            ):
+                return
+            if self._inbox_store is None:
+                self._inbox_store = Store(
+                    self._hass,
+                    _INBOX_STORE_VERSION,
+                    f"{DOMAIN}_inbox_{self._entry.entry_id}",
+                )
+                stored = await self._inbox_store.async_load()
+                self._inbox_seen_ids = set(stored or [])
+            seen_ids = self._inbox_seen_ids or set()
+
+            async def _fetch(client: BydClient) -> list[VehicleMsgItemInfo]:
+                return await client.get_notifications(NotificationCategory.VEHICLE)
+
+            # Set before the call so a failing endpoint backs off too.
+            self._inbox_fetched_at = now
+            messages: list[VehicleMsgItemInfo] = await self.async_call(
+                _fetch, command="inbox"
             )
-            self._notified_message_ids.add(message_id)
-            new_notification_count += 1
-        if new_notification_count:
-            _LOGGER.debug(
-                "Published %d new BYD inbox notification(s) in Home Assistant",
-                new_notification_count,
+
+            current_ids = {str(message.message_id) for message in messages}
+            new_messages = [
+                message
+                for message in messages
+                if str(message.message_id) not in seen_ids
+            ]
+            for message in new_messages:
+                persistent_notification.async_create(
+                    self._hass,
+                    message.content or message.title or "New BYD vehicle message",
+                    title=f"BYD: {message.title or 'Vehicle message'}",
+                    notification_id=(
+                        f"{DOMAIN}_{self._entry.entry_id}_message_{message.message_id}"
+                    ),
+                )
+            if new_messages:
+                _LOGGER.debug(
+                    "Published %d new BYD inbox notification(s)", len(new_messages)
+                )
+            # Only unread ids can come back, so older ones are dropped.
+            if current_ids != seen_ids:
+                self._inbox_seen_ids = current_ids
+                await self._inbox_store.async_save(sorted(current_ids))
+
+            epoch = datetime.min.replace(tzinfo=UTC)
+            self._inbox_messages = sorted(
+                messages,
+                key=lambda message: message.push_time or epoch,
+                reverse=True,
             )
-        self._notifications = messages
-        self._notifications_fetched_at = now
-        return messages
 
     async def async_get_car(self, vin: str, vehicle: Vehicle) -> BydCar:
         """Obtain a ``BydCar`` aggregate for *vin*.
@@ -562,7 +614,6 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         self._polling_enabled = True
         self._force_next_refresh = False
         self._car: BydCar | None = None
-        self.notifications: list[Any] = []
         self._realtime_endpoint_unsupported: bool = False
         # ``getEnergyConsumption`` returns ``code=1001`` on several VINs
         # (notably the Sealion 7 EU trim).  pyBYD translates that to
@@ -705,6 +756,16 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         return self.has_pin_configured and self._api.commands_enabled
 
     @property
+    def inbox_enabled(self) -> bool:
+        """Return whether BYD inbox messages are surfaced."""
+        return self._api.inbox_enabled
+
+    @property
+    def inbox_messages(self) -> list[VehicleMsgItemInfo]:
+        """Return the account's unread inbox messages, newest first."""
+        return self._api.inbox_messages
+
+    @property
     def vin(self) -> str:
         return self._vin
 
@@ -824,10 +885,10 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
             )
 
         try:
-            self.notifications = await self._api.async_get_notifications()
-        except _AUTH_ERRORS:
+            await self._api.async_refresh_inbox()
+        except ConfigEntryAuthFailed:
             raise
-        except _RECOVERABLE_ERRORS as exc:
+        except HomeAssistantError as exc:
             _LOGGER.debug("Inbox fetch failed: vin=%s error=%s", self._vin[-6:], exc)
 
         snapshot = car.state

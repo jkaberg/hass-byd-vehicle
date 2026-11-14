@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS 비활성 간격(초)",
           "climate_duration": "에어컨 작동 시간 (time_span)",
           "mqtt_enabled": "MQTT 푸시 업데이트",
+          "inbox_notifications": "BYD 받은 메시지를 알림으로 표시",
           "debug_dumps": "API 응답 디버그 덤프"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "최근 알림"
       }
     },
     "binary_sensor": {

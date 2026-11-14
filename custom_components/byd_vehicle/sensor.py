@@ -1162,10 +1162,13 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
 
 
 class BydLatestNotificationSensor(BydVehicleEntity, SensorEntity):
-    """Expose the newest account inbox notification as a sensor."""
+    """Newest unread message in the account's BYD inbox.
 
-    _attr_has_entity_name = True
-    _attr_name = "Latest notification"
+    The inbox is account-wide, so every vehicle on the entry shows the same
+    message; the text names the car it is about.
+    """
+
+    _attr_translation_key = "latest_notification"
     _attr_icon = "mdi:email-outline"
 
     def __init__(self, coordinator: BydDataUpdateCoordinator) -> None:
@@ -1176,23 +1179,22 @@ class BydLatestNotificationSensor(BydVehicleEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
-        """Return latest notification title, if available."""
-        messages = getattr(self.coordinator, "notifications", ())
+        """Return the newest message title."""
+        messages = self.coordinator.inbox_messages
         return messages[0].title if messages else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose message text and timestamp without message/account identifiers."""
+        """Expose the newest message text and time."""
         attributes = super().extra_state_attributes
-        messages = getattr(self.coordinator, "notifications", ())
+        messages = self.coordinator.inbox_messages
         if messages:
-            attributes.update(
-                {
-                    "content": messages[0].content,
-                    "timestamp": str(messages[0].push_time),
-                    "category": "vehicle",
-                }
+            newest = messages[0]
+            attributes["content"] = newest.content
+            attributes["push_time"] = (
+                newest.push_time.isoformat() if newest.push_time else None
             )
+        attributes["unread_count"] = len(messages)
         return attributes
 
 
@@ -1208,7 +1210,8 @@ async def async_setup_entry(
 
     entities: list[SensorEntity] = []
     for vin, coordinator in coordinators.items():
-        entities.append(BydLatestNotificationSensor(coordinator))
+        if coordinator.inbox_enabled:
+            entities.append(BydLatestNotificationSensor(coordinator))
         vehicle = coordinator.vehicle
         for description in SENSOR_DESCRIPTIONS:
             if description.key == "gps_last_updated":
