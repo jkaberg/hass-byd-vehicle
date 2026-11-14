@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS etkin olmayan süre (saniye)",
           "climate_duration": "Klima süresi (time_span)",
           "mqtt_enabled": "MQTT anlık güncellemeleri",
+          "inbox_notifications": "BYD gelen kutusu mesajlarını bildirim olarak göster",
           "debug_dumps": "API yanıtlarının hata ayıklama dökümü"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "Son bildirim"
       }
     },
     "binary_sensor": {

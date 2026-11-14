@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS inaktív időköz (mp)",
           "climate_duration": "Klíma időtartam",
           "mqtt_enabled": "MQTT push frissítések",
+          "inbox_notifications": "BYD postafiók üzenetek megjelenítése értesítésként",
           "debug_dumps": "API válaszok mentése hibakereséshez"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "Legutóbbi értesítés"
       }
     },
     "binary_sensor": {

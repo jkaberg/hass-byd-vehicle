@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS nofaol interval (soniyalar)",
           "climate_duration": "Iqlim davomiyligi (time_span)",
           "mqtt_enabled": "MQTT push yangilanishlari",
+          "inbox_notifications": "BYD xabarlarini bildirishnoma sifatida koʻrsatish",
           "debug_dumps": "API javoblarni xato tuzatish uchun saqlash"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "Soʻnggi bildirishnoma"
       }
     },
     "binary_sensor": {

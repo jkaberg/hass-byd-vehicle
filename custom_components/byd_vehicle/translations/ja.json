@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS 非アクティブな間隔 (秒)",
           "climate_duration": "エアコン作動時間 (time_span)",
           "mqtt_enabled": "MQTTプッシュ更新",
+          "inbox_notifications": "BYD の受信メッセージを通知として表示",
           "debug_dumps": "APIレスポンスのデバッグダンプ"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "最新の通知"
       }
     },
     "binary_sensor": {

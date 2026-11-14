@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS interval tidak aktif (detik)",
           "climate_duration": "Durasi iklim (time_span)",
           "mqtt_enabled": "Pembaruan push MQTT",
+          "inbox_notifications": "Tampilkan pesan kotak masuk BYD sebagai notifikasi",
           "debug_dumps": "Debug dump respons API"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "Notifikasi terbaru"
       }
     },
     "binary_sensor": {

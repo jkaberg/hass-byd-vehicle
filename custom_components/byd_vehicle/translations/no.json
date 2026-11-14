@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS inaktivt intervall (sekunder)",
           "climate_duration": "Klimavarighet (time_span)",
           "mqtt_enabled": "MQTT push-oppdateringer",
+          "inbox_notifications": "Vis BYD-innboksmeldinger som varsler",
           "debug_dumps": "Feilsøkingsdump av API-svar"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "Siste varsel"
       }
     },
     "binary_sensor": {

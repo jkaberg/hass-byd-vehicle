@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS ช่วงเวลาที่ไม่ใช้งาน (วินาที)",
           "climate_duration": "ระยะเวลาเครื่องปรับอากาศ (time_span)",
           "mqtt_enabled": "การอัปเดตแบบพุชผ่าน MQTT",
+          "inbox_notifications": "แสดงข้อความในกล่องจดหมาย BYD เป็นการแจ้งเตือน",
           "debug_dumps": "ดัมพ์ดีบักการตอบสนอง API"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "การแจ้งเตือนล่าสุด"
       }
     },
     "binary_sensor": {

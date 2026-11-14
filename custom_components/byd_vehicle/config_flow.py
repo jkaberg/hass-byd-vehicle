@@ -28,6 +28,7 @@ from .const import (
     CONF_DEBUG_DUMPS,
     CONF_DEVICE_PROFILE,
     CONF_GPS_POLL_INTERVAL,
+    CONF_INBOX_NOTIFICATIONS,
     CONF_LANGUAGE,
     CONF_MQTT_ENABLED,
     CONF_POLL_INTERVAL,
@@ -36,6 +37,7 @@ from .const import (
     DEFAULT_COUNTRY,
     DEFAULT_DEBUG_DUMPS,
     DEFAULT_GPS_POLL_INTERVAL,
+    DEFAULT_INBOX_NOTIFICATIONS,
     DEFAULT_MQTT_ENABLED,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
@@ -164,6 +166,13 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                     ),
                 ): bool,
                 vol.Optional(
+                    CONF_INBOX_NOTIFICATIONS,
+                    default=defaults.get(
+                        CONF_INBOX_NOTIFICATIONS,
+                        DEFAULT_INBOX_NOTIFICATIONS,
+                    ),
+                ): bool,
+                vol.Optional(
                     CONF_DEBUG_DUMPS,
                     default=defaults.get(
                         CONF_DEBUG_DUMPS,
@@ -197,6 +206,10 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
             CONF_DEBUG_DUMPS: options.get(
                 CONF_DEBUG_DUMPS,
                 DEFAULT_DEBUG_DUMPS,
+            ),
+            CONF_INBOX_NOTIFICATIONS: options.get(
+                CONF_INBOX_NOTIFICATIONS,
+                DEFAULT_INBOX_NOTIFICATIONS,
             ),
         }
 
@@ -259,6 +272,7 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                         ),
                         CONF_MQTT_ENABLED: user_input[CONF_MQTT_ENABLED],
                         CONF_DEBUG_DUMPS: user_input[CONF_DEBUG_DUMPS],
+                        CONF_INBOX_NOTIFICATIONS: user_input[CONF_INBOX_NOTIFICATIONS],
                     }
 
                     self.hass.config_entries.async_update_entry(
@@ -292,6 +306,7 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                         ),
                         CONF_MQTT_ENABLED: user_input[CONF_MQTT_ENABLED],
                         CONF_DEBUG_DUMPS: user_input[CONF_DEBUG_DUMPS],
+                        CONF_INBOX_NOTIFICATIONS: user_input[CONF_INBOX_NOTIFICATIONS],
                     },
                 )
 
@@ -364,6 +379,7 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                     ),
                     CONF_MQTT_ENABLED: user_input[CONF_MQTT_ENABLED],
                     CONF_DEBUG_DUMPS: user_input[CONF_DEBUG_DUMPS],
+                    CONF_INBOX_NOTIFICATIONS: user_input[CONF_INBOX_NOTIFICATIONS],
                 }
 
                 self.hass.config_entries.async_update_entry(
@@ -393,6 +409,10 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
             CONF_DEBUG_DUMPS: reconfigure_entry.options.get(
                 CONF_DEBUG_DUMPS,
                 DEFAULT_DEBUG_DUMPS,
+            ),
+            CONF_INBOX_NOTIFICATIONS: reconfigure_entry.options.get(
+                CONF_INBOX_NOTIFICATIONS,
+                DEFAULT_INBOX_NOTIFICATIONS,
             ),
         }
         data_schema = self._build_user_schema(defaults)

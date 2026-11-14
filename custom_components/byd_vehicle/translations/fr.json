@@ -16,6 +16,7 @@
           "gps_inactive_interval": "GPS intervalle d'inactivité (secondes)",
           "climate_duration": "Durée de climatisation (time_span)",
           "mqtt_enabled": "Mises à jour push MQTT",
+          "inbox_notifications": "Afficher les messages de la boîte BYD comme notifications",
           "debug_dumps": "Dump de débogage des réponses API"
         }
       }
@@ -206,6 +207,9 @@
       },
       "vehicle_time_zone": {
         "name": "Vehicle time zone"
+      },
+      "latest_notification": {
+        "name": "Dernière notification"
       }
     },
     "binary_sensor": {

@@ -107,6 +107,7 @@
           "country_code": "Country",
           "climate_duration": "Climate duration (time_span)",
           "mqtt_enabled": "MQTT push updates",
+          "inbox_notifications": "Show BYD inbox messages as notifications",
           "debug_dumps": "Debug dump API responses"
         }
       },
@@ -120,6 +121,7 @@
           "country_code": "Country",
           "climate_duration": "Climate duration",
           "mqtt_enabled": "MQTT push updates",
+          "inbox_notifications": "Show BYD inbox messages as notifications",
           "debug_dumps": "Debug dump API responses"
         }
       }
@@ -330,7 +332,7 @@
       "energy_last_50km_oil_consumption": {
         "name": "Last 50km fuel consumption"
       },
-"energy_last_50km_drive_distribution": {
+      "energy_last_50km_drive_distribution": {
         "name": "Last 50km drive distribution"
       },
       "energy_last_50km_elect_distribution": {
@@ -347,6 +349,9 @@
       },
       "energy_auto_model_graph_today": {
         "name": "Today's model-average consumption"
+      },
+      "latest_notification": {
+        "name": "Latest notification"
       }
     },
     "binary_sensor": {
