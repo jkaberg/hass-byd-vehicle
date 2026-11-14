@@ -347,6 +347,28 @@
       },
       "energy_auto_model_graph_today": {
         "name": "Today's model-average consumption"
+      },
+      "telemetry_freshness": {
+        "name": "Telemetry freshness",
+        "state": {
+          "fresh": "Fresh",
+          "stale": "Stale",
+          "paused": "Polling paused"
+        }
+      },
+      "telemetry_last_successful_fetch": {
+        "name": "Last successful telemetry fetch"
+      },
+      "gps_freshness": {
+        "name": "GPS freshness",
+        "state": {
+          "fresh": "Fresh",
+          "stale": "Stale",
+          "paused": "Polling paused"
+        }
+      },
+      "gps_last_successful_fetch": {
+        "name": "Last successful GPS fetch"
       }
     },
     "binary_sensor": {

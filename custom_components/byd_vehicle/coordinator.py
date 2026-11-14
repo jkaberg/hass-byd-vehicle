@@ -518,6 +518,7 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         self._fixed_interval = timedelta(seconds=poll_interval)
         self._polling_enabled = True
         self._force_next_refresh = False
+        self.last_successful_fetch: datetime | None = None
         self._car: BydCar | None = None
         self._realtime_endpoint_unsupported: bool = False
         # ``getEnergyConsumption`` returns ``code=1001`` on several VINs
@@ -732,6 +733,7 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         # --- Realtime ---
         try:
             await car.update_realtime()
+            self.last_successful_fetch = datetime.now(tz=UTC)
         except _AUTH_ERRORS:
             raise
         except BydEndpointNotSupportedError:
@@ -902,6 +904,8 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
             return
         try:
             result = await self._car.update_realtime()
+            self.last_successful_fetch = datetime.now(tz=UTC)
+            self.async_update_listeners()
             _LOGGER.info(
                 "fetch_realtime result: vin=%s, payload=%s",
                 self._vin[-6:],
@@ -1231,6 +1235,7 @@ class BydGpsUpdateCoordinator(_ReschedulingCoordinator):
         self._fixed_interval = timedelta(seconds=poll_interval)
         self._polling_enabled = True
         self._force_next_refresh = False
+        self.last_successful_fetch: datetime | None = None
 
     @property
     def polling_enabled(self) -> bool:
@@ -1271,6 +1276,8 @@ class BydGpsUpdateCoordinator(_ReschedulingCoordinator):
             return
         try:
             result = await car.update_gps()
+            self.last_successful_fetch = datetime.now(tz=UTC)
+            self.async_update_listeners()
             _LOGGER.info(
                 "fetch_gps result: vin=%s, payload=%s",
                 self._vin[-6:],
@@ -1328,6 +1335,7 @@ class BydGpsUpdateCoordinator(_ReschedulingCoordinator):
 
         try:
             await car.update_gps()
+            self.last_successful_fetch = datetime.now(tz=UTC)
         except _AUTH_ERRORS:
             raise
         except BydDataUnavailableError:

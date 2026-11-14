@@ -26,14 +26,17 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfTime,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.util import dt as dt_util
 from pybyd.models.realtime import TirePressureUnit
 from pybyd.models.vehicle import EnergyType, Vehicle
 
 from .const import DOMAIN
 from .coordinator import BydDataUpdateCoordinator
 from .entity import BydVehicleEntity
+from .freshness import data_age, freshness_state
 
 # ---------------------------------------------------------------------------
 # Simple presentation-level validators (pyBYD state engine handles deeper
@@ -1174,6 +1177,17 @@ async def async_setup_entry(
     entities: list[SensorEntity] = []
     for vin, coordinator in coordinators.items():
         vehicle = coordinator.vehicle
+        for source, source_coordinator in (
+            ("telemetry", coordinator),
+            ("gps", gps_coordinators.get(vin)),
+        ):
+            if source_coordinator is not None:
+                for kind in ("freshness", "last_successful_fetch"):
+                    entities.append(
+                        BydFreshnessSensor(
+                            source_coordinator, vin, vehicle, source, kind
+                        )
+                    )
         for description in SENSOR_DESCRIPTIONS:
             if description.key == "gps_last_updated":
                 gps_coordinator = gps_coordinators.get(vin)
@@ -1199,6 +1213,91 @@ _TIRE_UNIT_MAP = {
     TirePressureUnit.PSI: UnitOfPressure.PSI,
     TirePressureUnit.KPA: UnitOfPressure.KPA,
 }
+
+
+class BydFreshnessSensor(BydVehicleEntity, SensorEntity):
+    """Opt-in per-source diagnostics, independent of data-coordinator availability.
+
+    A local clock tick updates age even when polls fail or MQTT is silent. It
+    never schedules a fetch. Disabled entities register no timer/listener.
+    """
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self, coordinator: Any, vin: str, vehicle: Vehicle, source: str, kind: str
+    ) -> None:
+        super().__init__(coordinator)
+        self._vin = vin
+        self._vehicle = vehicle
+        self._source = source
+        self._kind = kind
+        key = f"{source}_{kind}"
+        self._attr_unique_id = f"{vin}_{key}"
+        self._attr_translation_key = key
+        if kind == "freshness":
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = ["fresh", "stale", "paused"]
+        else:
+            self._attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    @property
+    def available(self) -> bool:
+        # Diagnostics must remain readable after a failed refresh. Missing source
+        # timestamps return unknown rather than inheriting fake fresh/offline state.
+        return True
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if self._kind == "freshness":
+            self.async_on_remove(
+                async_track_time_interval(
+                    self.hass, self._update_age, timedelta(minutes=1)
+                )
+            )
+
+    @callback
+    def _update_age(self, _now: datetime) -> None:
+        self.async_write_ha_state()
+
+    def _timestamp(self) -> datetime | None:
+        snapshot = self.coordinator.data
+        if snapshot is None:
+            return None
+        if self._source == "gps":
+            # Do not shift an old GPS fix toward the realtime timestamp: that
+            # could make a genuinely stale position appear fresh. Future/naive
+            # source timestamps remain unknown, not guessed or corrected here.
+            return getattr(snapshot.gps, "gps_timestamp", None)
+        return getattr(snapshot.realtime, "timestamp", None)
+
+    def _interval(self) -> timedelta:
+        return self.coordinator.update_interval or timedelta(
+            seconds=self.coordinator.poll_interval_seconds
+        )
+
+    @property
+    def native_value(self) -> datetime | str | None:
+        if self._kind == "last_successful_fetch":
+            return self.coordinator.last_successful_fetch
+        age = data_age(self._timestamp(), dt_util.utcnow())
+        return freshness_state(age, self.coordinator.polling_enabled, self._interval())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        # No additional VIN, location, payload, credentials or error bodies.
+        if self._kind != "freshness":
+            return {}
+        age = data_age(self._timestamp(), dt_util.utcnow())
+        return {
+            "data_age_seconds": int(age) if age is not None else None,
+            "freshness_threshold_seconds": max(
+                300, int(2 * self._interval().total_seconds())
+            ),
+            "polling_enabled": self.coordinator.polling_enabled,
+        }
 
 
 class BydSensor(BydVehicleEntity, SensorEntity):
