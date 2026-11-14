@@ -35,6 +35,29 @@ Both freshness panels had last_changed 20:41:28 and last_updated 20:44:28. This
 confirms attribute updates while Fresh stays unchanged; it is not a live network
 trace proving a particular update originated solely from the local timer.
 
+## Redacted coordinator debug log
+
+[freshness-live.log](validation/freshness-live.log) contains all 27 BYD debug
+lines in the owner's follow-up capture, from 21:31:46 to 21:41:58 local time.
+The vehicle identifier is consistently replaced with `<VEHICLE_1>` in both
+`vin=` fields and coordinator names. Unrelated startup/integration messages
+are excluded; no BYD debug line from the supplied capture is omitted. The raw
+download is not published.
+
+- Three telemetry refresh cycles succeeded, with starts 241 seconds apart.
+- Three GPS refresh cycles succeeded, with starts approximately 300 seconds apart.
+- Each cycle ends with `success: True`; no BYD failure appears in this window.
+- `HVAC fetch skipped` explicitly records a skipped fetch. `hvac=True` describes
+  existing snapshot presence, not a claim that HVAC data was fetched or fresh.
+- `Manually updated ... data` is the coordinator's internal log wording, not
+  evidence that the owner pressed Force poll.
+
+This confirms normal source polling during the capture, consistent with the
+effective intervals discussed above. The log does not contain the four new
+sensors' values; their behavior is evidenced by the earlier UI observations
+and automated tests. This is not a before/after request-rate comparison or a
+live stale/pause/failure-transition test.
+
 ## Limits
 
 - Happy-path registration, enablement, timestamps, independent source freshness
@@ -58,7 +81,8 @@ trace proving a particular update originated solely from the local timer.
   This matches lint.yaml's installation pattern; it is **local CI parity**, not
   proof a remote GitHub Actions run or HACS/hassfest validation passed.
 
-Remaining before marking the PR ready for review: full redacted end-to-end debug
-logs requested by the contribution guidelines, contributor review and remote
-checks. UI observations above are not presented as debug logs. The unobserved
-live edge cases remain explicitly documented rather than claimed as completed.
+The relevant redacted end-to-end logs are included above. UI observations are
+not presented as debug logs, and unobserved live edge cases remain explicitly
+documented rather than claimed as completed. The source diff and public evidence
+were reviewed with AI assistance. Fork CI is checked on the final submitted
+revision before the PR is opened; run links are recorded in the PR description.

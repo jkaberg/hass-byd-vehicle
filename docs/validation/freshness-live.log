@@ -1,0 +1,27 @@
+2026-11-14 21:31:46.574+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Telemetry refresh started: vin=<VEHICLE_1>
+2026-11-14 21:31:48.203+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Manually updated byd_vehicle_telemetry_<VEHICLE_1> data
+2026-11-14 21:31:48.209+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] HVAC fetch skipped: vin=<VEHICLE_1>, reason=vehicle_not_on
+2026-11-14 21:31:48.307+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Telemetry refresh succeeded: vin=<VEHICLE_1>, realtime=True, hvac=True
+2026-11-14 21:31:48.307+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Finished fetching byd_vehicle_telemetry_<VEHICLE_1> data in 1.733 seconds (success: True)
+2026-11-14 21:31:58.550+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] GPS refresh started: vin=<VEHICLE_1>
+2026-11-14 21:31:58.930+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Manually updated byd_vehicle_gps_<VEHICLE_1> data
+2026-11-14 21:31:58.932+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] GPS refresh succeeded: vin=<VEHICLE_1>, gps=True
+2026-11-14 21:31:58.932+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Finished fetching byd_vehicle_gps_<VEHICLE_1> data in 0.382 seconds (success: True)
+2026-11-14 21:35:47.574+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Telemetry refresh started: vin=<VEHICLE_1>
+2026-11-14 21:35:49.074+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Manually updated byd_vehicle_telemetry_<VEHICLE_1> data
+2026-11-14 21:35:49.080+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] HVAC fetch skipped: vin=<VEHICLE_1>, reason=vehicle_not_on
+2026-11-14 21:35:49.169+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Telemetry refresh succeeded: vin=<VEHICLE_1>, realtime=True, hvac=True
+2026-11-14 21:35:49.169+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Finished fetching byd_vehicle_telemetry_<VEHICLE_1> data in 1.595 seconds (success: True)
+2026-11-14 21:36:58.549+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] GPS refresh started: vin=<VEHICLE_1>
+2026-11-14 21:36:59.111+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Manually updated byd_vehicle_gps_<VEHICLE_1> data
+2026-11-14 21:36:59.113+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] GPS refresh succeeded: vin=<VEHICLE_1>, gps=True
+2026-11-14 21:36:59.113+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Finished fetching byd_vehicle_gps_<VEHICLE_1> data in 0.564 seconds (success: True)
+2026-11-14 21:39:48.574+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Telemetry refresh started: vin=<VEHICLE_1>
+2026-11-14 21:39:50.048+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Manually updated byd_vehicle_telemetry_<VEHICLE_1> data
+2026-11-14 21:39:50.054+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] HVAC fetch skipped: vin=<VEHICLE_1>, reason=vehicle_not_on
+2026-11-14 21:39:50.144+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Telemetry refresh succeeded: vin=<VEHICLE_1>, realtime=True, hvac=True
+2026-11-14 21:39:50.144+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Finished fetching byd_vehicle_telemetry_<VEHICLE_1> data in 1.570 seconds (success: True)
+2026-11-14 21:41:58.550+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] GPS refresh started: vin=<VEHICLE_1>
+2026-11-14 21:41:58.860+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Manually updated byd_vehicle_gps_<VEHICLE_1> data
+2026-11-14 21:41:58.862+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] GPS refresh succeeded: vin=<VEHICLE_1>, gps=True
+2026-11-14 21:41:58.862+11:00 DEBUG (MainThread) [custom_components.byd_vehicle.coordinator] Finished fetching byd_vehicle_gps_<VEHICLE_1> data in 0.312 seconds (success: True)

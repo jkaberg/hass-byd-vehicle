@@ -91,5 +91,5 @@ completed happy-path observations from further optional validation:
 6. Collect only redacted observations. Never attach VIN, account credentials,
    tokens, location or entire HA config/diagnostic payloads to a public PR.
 
-Current status: automated checks and initial live happy-path validation complete;
-live edge-case transitions and full redacted debug logs remain outstanding.
+Current status: automated checks, initial live happy-path validation and redacted
+normal-polling debug logs complete. Live edge-case transitions remain unobserved.
