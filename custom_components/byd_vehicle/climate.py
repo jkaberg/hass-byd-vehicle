@@ -77,9 +77,12 @@ class BydClimate(BydActionEntity, ClimateEntity):
         | ClimateEntityFeature.TURN_OFF
         | ClimateEntityFeature.TARGET_TEMPERATURE
         | ClimateEntityFeature.PRESET_MODE
+        | ClimateEntityFeature.FAN_MODE
     )
     _attr_target_temperature_step = 1
     _attr_preset_modes = [_PRESET_MAX_HEAT, _PRESET_MAX_COOL]
+    # windLevel / wind_position, 1 = lowest
+    _attr_fan_modes = [str(level) for level in range(1, 8)]
 
     def __init__(
         self,
@@ -93,6 +96,8 @@ class BydClimate(BydActionEntity, ClimateEntity):
         self._vehicle = vehicle
         self._climate_duration = climate_duration
         self._attr_unique_id = f"{vin}_climate"
+        # fan level picked while climate was off, sent on the next start
+        self._pending_fan_level: int | None = None
 
     @property
     def _temp_range(self) -> tuple[float, float]:
@@ -188,21 +193,45 @@ class BydClimate(BydActionEntity, ClimateEntity):
                 return self._preset_from_temp(temp_c)
         return None
 
+    @property
+    def fan_mode(self) -> str | None:
+        """Return the fan level, 1-7."""
+        hvac = self._get_hvac_status()
+        if hvac is not None and hvac.is_ac_on and hvac.wind_position is not None:
+            level = int(hvac.wind_position)
+            if 1 <= level <= 7:
+                return str(level)
+        if self._pending_fan_level is not None:
+            return str(self._pending_fan_level)
+        return None
+
     # ------------------------------------------------------------------
     # Commands — delegate to BydCar.hvac
     # ------------------------------------------------------------------
 
-    def _start_climate(self, car: Any, temperature: float) -> Any:
-        """Return the coroutine that starts climate with our air source."""
-        cycle_mode = (
-            _CYCLE_FRESH_AIR
-            if getattr(self.coordinator, "climate_fresh_air", False)
-            else _CYCLE_RECIRCULATE
-        )
+    def _start_climate(
+        self, car: Any, temperature: float, fan_level: int | None = None
+    ) -> Any:
+        """Return the coroutine that starts climate, or changes a running one.
+
+        On a running session pyBYD keeps the reported air source and fan
+        level unless we pass them, so the fresh-air switch only applies
+        when climate is started from off.
+        """
+        cycle_mode: int | None = None
+        if self.hvac_mode == HVACMode.OFF:
+            cycle_mode = (
+                _CYCLE_FRESH_AIR
+                if getattr(self.coordinator, "climate_fresh_air", False)
+                else _CYCLE_RECIRCULATE
+            )
+            if fan_level is None:
+                fan_level = self._pending_fan_level
         return car.hvac.start(
             temperature=temperature,
             duration=self._climate_duration,
             cycle_mode=cycle_mode,
+            fan_level=fan_level,
         )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
@@ -253,6 +282,26 @@ class BydClimate(BydActionEntity, ClimateEntity):
             return
         await self._execute_car_command(
             self._start_climate(car, temp_c),
+            command="start_climate",
+        )
+
+    async def async_set_fan_mode(self, fan_mode: str) -> None:
+        """Set the fan level, applied now if running, else on the next start."""
+        self._ensure_action_allowed()
+        if fan_mode not in self._attr_fan_modes:
+            raise HomeAssistantError(f"Unsupported fan mode: {fan_mode}")
+        level = int(fan_mode)
+        if self.hvac_mode == HVACMode.OFF:
+            self._pending_fan_level = level
+            self.async_write_ha_state()
+            return
+        car = self.coordinator.car
+        if car is None:
+            return
+        await self._execute_car_command(
+            self._start_climate(
+                car, self.target_temperature or self._DEFAULT_TEMP_C, fan_level=level
+            ),
             command="start_climate",
         )
 
