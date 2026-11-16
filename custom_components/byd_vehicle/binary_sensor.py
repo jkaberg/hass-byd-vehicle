@@ -441,6 +441,14 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda r: r.is_vehicle_on,
     ),
+    # A/C compressor, separate from the overall climate state (pyBYD#64)
+    BydBinarySensorDescription(
+        key="ac_compressor",
+        source="hvac",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        icon="mdi:snowflake",
+        value_fn=lambda h: h.is_compressor_on if h is not None else None,
+    ),
     # ====================================
     # Additional warnings (disabled)
     # ====================================

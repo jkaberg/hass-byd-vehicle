@@ -483,6 +483,9 @@
       },
       "scheduled_charge_until_full": {
         "name": "Scheduled charge until full"
+      },
+      "ac_compressor": {
+        "name": "A/C compressor"
       }
     },
     "button": {
