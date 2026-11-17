@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -17,8 +16,6 @@ from pybyd.models.vehicle import Vehicle
 from .const import DOMAIN
 from .coordinator import BydDataUpdateCoordinator
 from .entity import BydActionEntity
-
-_LOGGER = logging.getLogger(__name__)
 
 # Derive options from the enum – single source of truth, no duplicate mappings.
 SEAT_LEVEL_OPTIONS = [s.name.lower() for s in SeatHeatVentState if s.value > 0]
@@ -57,13 +54,13 @@ def _seat_status_to_option(value: Any) -> str | None:
 class BydSeatClimateDescription(SelectEntityDescription):
     """Describe a BYD seat climate select entity."""
 
-    seat_position: SeatPosition | None
-    """pyBYD seat position, or None for unsupported rear seats."""
+    seat_position: SeatPosition
+    """pyBYD seat position."""
     mode: str
     """``'heat'`` or ``'vent'``."""
     hvac_attr: str
     """Attribute name on HVAC / realtime status for current state."""
-    capability_key: str | None
+    capability_key: str
     """Normalized pyBYD capability flag name."""
 
 
@@ -103,38 +100,34 @@ SEAT_CLIMATE_DESCRIPTIONS: tuple[BydSeatClimateDescription, ...] = (
     BydSeatClimateDescription(
         key="rear_left_seat_heat",
         icon="mdi:car-seat-heater",
-        seat_position=None,
+        seat_position=SeatPosition.REAR_LEFT,
         mode="heat",
         hvac_attr="lr_seat_heat_state",
         capability_key="rear_left_seat_heat",
-        entity_registry_enabled_default=False,
     ),
     BydSeatClimateDescription(
         key="rear_left_seat_ventilation",
         icon="mdi:car-seat-cooler",
-        seat_position=None,
+        seat_position=SeatPosition.REAR_LEFT,
         mode="vent",
         hvac_attr="lr_seat_ventilation_state",
-        capability_key=None,
-        entity_registry_enabled_default=False,
+        capability_key="rear_left_seat_ventilation",
     ),
     BydSeatClimateDescription(
         key="rear_right_seat_heat",
         icon="mdi:car-seat-heater",
-        seat_position=None,
+        seat_position=SeatPosition.REAR_RIGHT,
         mode="heat",
         hvac_attr="rr_seat_heat_state",
         capability_key="rear_right_seat_heat",
-        entity_registry_enabled_default=False,
     ),
     BydSeatClimateDescription(
         key="rear_right_seat_ventilation",
         icon="mdi:car-seat-cooler",
-        seat_position=None,
+        seat_position=SeatPosition.REAR_RIGHT,
         mode="vent",
         hvac_attr="rr_seat_ventilation_state",
-        capability_key=None,
-        entity_registry_enabled_default=False,
+        capability_key="rear_right_seat_ventilation",
     ),
 )
 
@@ -152,10 +145,7 @@ async def async_setup_entry(
     for vin, coordinator in coordinators.items():
         vehicle = coordinator.vehicle
         for description in SEAT_CLIMATE_DESCRIPTIONS:
-            capability_key = description.capability_key
-            if capability_key is None or not coordinator.capability_available(
-                capability_key
-            ):
+            if not coordinator.capability_available(description.capability_key):
                 continue
             entities.append(
                 BydSeatClimateSelect(coordinator, vin, vehicle, description)
@@ -167,12 +157,9 @@ async def async_setup_entry(
 class BydSeatClimateSelect(BydActionEntity, SelectEntity):
     """Select entity for a single seat heating/ventilation level.
 
-    For driver and copilot seats, commands are dispatched through
-    ``car.seat.heat()`` / ``car.seat.ventilation()`` which handle
-    ``SeatClimateParams`` assembly and projections internally.
-
-    Rear-seat entities are read-only (disabled by default) because the
-    pyBYD capability does not yet map rear seat positions.
+    Commands are dispatched through ``car.seat.heat()`` /
+    ``car.seat.ventilation()`` which handle ``SeatClimateParams``
+    assembly and projections internally.
     """
 
     _attr_has_entity_name = True
@@ -213,14 +200,6 @@ class BydSeatClimateSelect(BydActionEntity, SelectEntity):
         """Set the seat climate level via pyBYD capability."""
         self._ensure_action_allowed()
         desc = self.entity_description
-
-        # Rear seats not yet supported by pyBYD SeatCapability.
-        if desc.seat_position is None:
-            _LOGGER.warning(
-                "Rear seat commands are not yet supported by pyBYD; %s ignored",
-                desc.key,
-            )
-            return
 
         level = _OPTION_TO_LEVEL.get(option)
         if level is None:
