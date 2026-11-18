@@ -321,6 +321,10 @@ class BydApi:
                 pass
             self._client = None
             self._commands_enabled = False
+            # BydCar instances are bound to the closed client; drop them so
+            # the next refresh fetches cars from the fresh client.
+            for coordinator in self._coordinators.values():
+                coordinator._car = None
 
     @property
     def inbox_enabled(self) -> bool:
