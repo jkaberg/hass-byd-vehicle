@@ -642,6 +642,11 @@
       "location": {
         "name": "Location"
       }
+    },
+    "calendar": {
+      "climate_plans": {
+        "name": "Climate plans"
+      }
     }
   }
 }

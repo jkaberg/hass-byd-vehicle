@@ -39,6 +39,7 @@ from pybyd import (
 )
 from pybyd.config import BydConfig, DeviceProfile
 from pybyd.models.message_center import VehicleMsgItemInfo
+from pybyd.models.standby import StandbyPlan, StandbyPlanList
 from pybyd.models.vehicle import Vehicle
 
 from .const import (
@@ -1072,6 +1073,46 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
                 self._vin,
                 exc,
             )
+
+    async def async_get_standby_plans(self) -> StandbyPlanList | None:
+        """Fetch the climate preconditioning plans.
+
+        Returns ``None`` when the account can't use plans (guest
+        accounts get ``1001``).  Other failures raise ``UpdateFailed``.
+        """
+
+        async def _handler(client: BydClient) -> StandbyPlanList | None:
+            try:
+                return await client.get_standby_plans(self._vin)
+            except BydEndpointNotSupportedError:
+                return None
+
+        result: StandbyPlanList | None = await self._api.async_call(
+            _handler, vin=self._vin, command="get_standby_plans"
+        )
+        return result
+
+    async def async_save_standby_plan(
+        self,
+        plan: StandbyPlan,
+        *,
+        start_time: str,
+        weekly_days: list[int],
+    ) -> StandbyPlanList:
+        """Save a plan's schedule and return the fresh plans."""
+
+        async def _handler(client: BydClient) -> StandbyPlanList:
+            return await client.save_standby_plan(
+                self._vin, plan, start_time=start_time, weekly_days=weekly_days
+            )
+
+        try:
+            result: StandbyPlanList = await self._api.async_call(
+                _handler, vin=self._vin, command="save_standby_plan"
+            )
+        except UpdateFailed as exc:
+            raise HomeAssistantError(f"Saving climate plan failed: {exc}") from exc
+        return result
 
     async def async_fetch_energy(self) -> None:
         """Service handler: fetch energy consumption and log the raw response.
