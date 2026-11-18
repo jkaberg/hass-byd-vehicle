@@ -41,7 +41,7 @@ def test_invalidate_client_drops_cached_cars() -> None:
     api = BydApi(hass, entry, session=None)
     client = _FakeClient()
     coordinator: Any = SimpleNamespace(_car=object())
-    api._client = client  # type: ignore[assignment]
+    api._client = client
     api._coordinators = {"VIN": coordinator}
 
     asyncio.run(api._invalidate_client())
