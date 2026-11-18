@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from time import perf_counter
@@ -39,7 +40,12 @@ from pybyd import (
 )
 from pybyd.config import BydConfig, DeviceProfile
 from pybyd.models.message_center import VehicleMsgItemInfo
-from pybyd.models.standby import StandbyPlan, StandbyPlanList
+from pybyd.models.standby import (
+    StandbyPlan,
+    StandbyPlanCommand,
+    StandbyPlanList,
+    StandbySchedule,
+)
 from pybyd.models.vehicle import Vehicle
 
 from .const import (
@@ -65,6 +71,8 @@ _HA_EVENT_COMMAND_LIFECYCLE: str = f"{DOMAIN}_command_lifecycle"
 _AUTH_ERRORS = (BydAuthenticationError, BydSessionExpiredError)
 # The inbox is account-wide, so one fetch serves every vehicle on the entry.
 _INBOX_FETCH_INTERVAL = timedelta(minutes=15)
+_PLAN_FETCH_INTERVAL = timedelta(minutes=30)
+_DEFAULT_TEMP_OFFSET_C = 14.0
 _INBOX_STORE_VERSION = 1
 _RECOVERABLE_ERRORS = (
     BydApiError,
@@ -626,6 +634,9 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         # service handler only logs the warning once instead of on
         # every press of the fetch button.
         self._energy_endpoint_unsupported: bool = False
+        self._standby_plans: StandbyPlanList | None = None
+        self._standby_plans_supported: bool | None = None
+        self._standby_plans_fetched_at: datetime | None = None
         self._cancel_hvac_final_retry: CALLBACK_TYPE | None = None
         self.update_pending: bool = False
         self._debounce_timer: CALLBACK_TYPE | None = None
@@ -896,6 +907,8 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         except HomeAssistantError as exc:
             _LOGGER.debug("Inbox fetch failed: vin=%s error=%s", self._vin[-6:], exc)
 
+        await self._async_refresh_standby_plans()
+
         snapshot = car.state
         self._schedule_hvac_final_reconcile_if_needed(previous_snapshot, snapshot)
 
@@ -1074,11 +1087,28 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
                 exc,
             )
 
-    async def async_get_standby_plans(self) -> StandbyPlanList | None:
-        """Fetch the climate preconditioning plans.
+    @property
+    def standby_plans(self) -> StandbyPlanList | None:
+        """Last fetched climate plans, ``None`` before the first fetch."""
+        return self._standby_plans
 
-        Returns ``None`` when the account can't use plans (guest
-        accounts get ``1001``).  Other failures raise ``UpdateFailed``.
+    @property
+    def temp_offset(self) -> float:
+        """°C offset of the car's climate scale (14 → 15-31 °C)."""
+        car = self._car
+        return car.hvac.temp_offset if car is not None else _DEFAULT_TEMP_OFFSET_C
+
+    @property
+    def temp_range(self) -> tuple[float, float]:
+        """Climate setpoint range in °C."""
+        offset = self.temp_offset
+        return offset + 1, offset + 17
+
+    async def async_get_standby_plans(self) -> StandbyPlanList | None:
+        """Fetch the climate plans and cache them.
+
+        Returns ``None`` when the cloud doesn't offer plans for this car
+        (``1001``).  Other failures raise ``UpdateFailed``.
         """
 
         async def _handler(client: BydClient) -> StandbyPlanList | None:
@@ -1090,29 +1120,89 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         result: StandbyPlanList | None = await self._api.async_call(
             _handler, vin=self._vin, command="get_standby_plans"
         )
+        self._standby_plans_fetched_at = datetime.now(UTC)
+        self._standby_plans_supported = result is not None
+        if result is not None:
+            self._standby_plans = result
+        return result
+
+    async def _async_refresh_standby_plans(self) -> None:
+        # piggybacks on the telemetry poll, plans change rarely
+        if self._standby_plans_supported is False:
+            return
+        fetched = self._standby_plans_fetched_at
+        if fetched is not None and datetime.now(UTC) - fetched < _PLAN_FETCH_INTERVAL:
+            return
+        try:
+            await self.async_get_standby_plans()
+        except UpdateFailed as exc:
+            _LOGGER.debug("Plan fetch failed: vin=%s, error=%s", self._vin[-6:], exc)
+
+    async def _async_plan_write(
+        self,
+        command: str,
+        call: Callable[[BydClient], Awaitable[StandbyPlanList]],
+    ) -> StandbyPlanList:
+        try:
+            result: StandbyPlanList = await self._api.async_call(
+                call, vin=self._vin, command=command
+            )
+        except UpdateFailed as exc:
+            raise HomeAssistantError(f"Changing climate plan failed: {exc}") from exc
+        self._standby_plans = result
+        self._standby_plans_fetched_at = datetime.now(UTC)
+        self.async_update_listeners()
         return result
 
     async def async_save_standby_plan(
-        self,
-        plan: StandbyPlan,
-        *,
-        start_time: str,
-        weekly_days: list[int],
+        self, plan: StandbyPlan, schedule: StandbySchedule | None = None
     ) -> StandbyPlanList:
-        """Save a plan's schedule and return the fresh plans."""
+        """Save a plan and return the fresh plans."""
+        return await self._async_plan_write(
+            "save_standby_plan",
+            lambda client: client.save_standby_plan(self._vin, plan, schedule=schedule),
+        )
 
-        async def _handler(client: BydClient) -> StandbyPlanList:
-            return await client.save_standby_plan(
-                self._vin, plan, start_time=start_time, weekly_days=weekly_days
+    async def async_create_standby_plan(
+        self,
+        name: str,
+        commands: list[StandbyPlanCommand],
+        schedule: StandbySchedule,
+    ) -> StandbyPlanList:
+        """Create a plan and return the fresh plans."""
+
+        async def _create(client: BydClient) -> StandbyPlanList:
+            await client.create_standby_plan(
+                self._vin, name, commands, schedule=schedule
             )
+            return await client.get_standby_plans(self._vin)
 
+        return await self._async_plan_write("create_standby_plan", _create)
+
+    async def async_delete_standby_plan(self, plan_id: str) -> StandbyPlanList:
+        """Delete a user plan and return the fresh plans."""
+        return await self._async_plan_write(
+            "delete_standby_plan",
+            lambda client: client.delete_standby_plan(self._vin, plan_id),
+        )
+
+    async def async_set_default_standby_plan(self, plan_id: str) -> StandbyPlanList:
+        """Make a plan the default and return the fresh plans."""
+        return await self._async_plan_write(
+            "set_default_standby_plan",
+            lambda client: client.set_default_standby_plan(self._vin, plan_id),
+        )
+
+    async def async_run_standby_plan(self, plan_id: str) -> None:
+        """Run a plan now."""
         try:
-            result: StandbyPlanList = await self._api.async_call(
-                _handler, vin=self._vin, command="save_standby_plan"
+            await self._api.async_call(
+                lambda client: client.run_standby_plan(self._vin, plan_id),
+                vin=self._vin,
+                command="run_standby_plan",
             )
         except UpdateFailed as exc:
-            raise HomeAssistantError(f"Saving climate plan failed: {exc}") from exc
-        return result
+            raise HomeAssistantError(f"Running climate plan failed: {exc}") from exc
 
     async def async_fetch_energy(self) -> None:
         """Service handler: fetch energy consumption and log the raw response.

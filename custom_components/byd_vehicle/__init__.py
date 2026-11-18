@@ -8,7 +8,12 @@ from typing import Any
 
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+)
 from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
     ConfigEntryNotReady,
@@ -16,7 +21,10 @@ from homeassistant.exceptions import (
 )
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import UpdateFailed
+from homeassistant.util import dt as dt_util
 from pybyd import BydClient
+from pybyd.models.standby import StandbyPlan, StandbySchedule
 
 from .const import (
     CONF_BASE_URL,
@@ -42,6 +50,14 @@ from .const import (
 )
 from .coordinator import BydApi, BydDataUpdateCoordinator, BydGpsUpdateCoordinator
 from .device_fingerprint import async_generate_device_profile
+from .plans import (
+    commands_from_call,
+    default_plan,
+    find_plan,
+    plan_summary,
+    plan_zone,
+    schedule_from_call,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -392,6 +408,12 @@ _SERVICE_FETCH_CHARGING = "fetch_charging"
 _SERVICE_FETCH_ENERGY = "fetch_energy"
 _SERVICE_START_CHARGING = "start_charging"
 _SERVICE_SAVE_CHARGING_SCHEDULE = "save_charging_schedule"
+_SERVICE_LIST_CLIMATE_PLANS = "list_climate_plans"
+_SERVICE_CREATE_CLIMATE_PLAN = "create_climate_plan"
+_SERVICE_UPDATE_CLIMATE_PLAN = "update_climate_plan"
+_SERVICE_DELETE_CLIMATE_PLAN = "delete_climate_plan"
+_SERVICE_RUN_CLIMATE_PLAN = "run_climate_plan"
+_SERVICE_SET_DEFAULT_CLIMATE_PLAN = "set_default_climate_plan"
 
 # Repeat-mode → BYD ``chargeWay`` wire format.
 _REPEAT_TO_CHARGE_WAY: dict[str, str] = {
@@ -419,6 +441,12 @@ _ALL_SERVICES = (
     _SERVICE_FETCH_ENERGY,
     _SERVICE_START_CHARGING,
     _SERVICE_SAVE_CHARGING_SCHEDULE,
+    _SERVICE_LIST_CLIMATE_PLANS,
+    _SERVICE_CREATE_CLIMATE_PLAN,
+    _SERVICE_UPDATE_CLIMATE_PLAN,
+    _SERVICE_DELETE_CLIMATE_PLAN,
+    _SERVICE_RUN_CLIMATE_PLAN,
+    _SERVICE_SET_DEFAULT_CLIMATE_PLAN,
 )
 
 
@@ -524,6 +552,111 @@ def _get_coordinators(
     return telemetry, gps
 
 
+async def _plan_target(
+    hass: HomeAssistant, call: ServiceCall
+) -> tuple[BydDataUpdateCoordinator, list[StandbyPlan]]:
+    """The one vehicle a plan service acts on, with its current plans."""
+    targets = _resolve_vins_from_call(hass, call)
+    if len(targets) != 1:
+        raise HomeAssistantError("Climate plan services take one vehicle at a time")
+    coordinator, _ = _get_coordinators(hass, *targets[0])
+    plans = coordinator.standby_plans
+    if plans is None:
+        try:
+            plans = await coordinator.async_get_standby_plans()
+        except UpdateFailed as exc:
+            raise HomeAssistantError(f"Fetching climate plans failed: {exc}") from exc
+    if plans is None:
+        raise HomeAssistantError("Climate plans aren't available for this vehicle")
+    return coordinator, list(plans.plans)
+
+
+def _async_register_plan_services(hass: HomeAssistant) -> None:
+    """Register the climate plan services (pyBYD#91)."""
+
+    async def _handle_list(call: ServiceCall) -> ServiceResponse:
+        coordinator, plans = await _plan_target(hass, call)
+        now = dt_util.now()
+        return {
+            "plans": [
+                plan_summary(plan, temp_offset=coordinator.temp_offset, now=now)
+                for plan in plans
+            ]
+        }
+
+    async def _handle_create(call: ServiceCall) -> None:
+        coordinator, plans = await _plan_target(hass, call)
+        template = default_plan(plans)
+        commands = commands_from_call(
+            call.data,
+            base=template,
+            temp_offset=coordinator.temp_offset,
+            supports=coordinator.capability_available,
+        )
+        schedule = schedule_from_call(
+            call.data, current=None, zone=plan_zone(template), now=dt_util.now()
+        )
+        await coordinator.async_create_standby_plan(
+            call.data["name"], commands, schedule or StandbySchedule.off()
+        )
+
+    async def _handle_update(call: ServiceCall) -> None:
+        coordinator, plans = await _plan_target(hass, call)
+        plan = find_plan(plans, call.data["plan"])
+        commands = commands_from_call(
+            call.data,
+            base=plan,
+            temp_offset=coordinator.temp_offset,
+            supports=coordinator.capability_available,
+        )
+        schedule = schedule_from_call(
+            call.data,
+            current=plan.schedule,
+            zone=plan_zone(plan),
+            now=dt_util.now(),
+        )
+        updated = plan.model_copy(
+            update={
+                "plan_name": call.data.get("name") or plan.plan_name,
+                "commands": commands,
+            }
+        )
+        await coordinator.async_save_standby_plan(updated, schedule)
+
+    async def _handle_delete(call: ServiceCall) -> None:
+        coordinator, plans = await _plan_target(hass, call)
+        plan = find_plan(plans, call.data["plan"])
+        if plan.preset:
+            # the cloud won't delete the preset plan, so unschedule it
+            await coordinator.async_save_standby_plan(plan, StandbySchedule.off())
+        else:
+            await coordinator.async_delete_standby_plan(plan.id)
+
+    async def _handle_run(call: ServiceCall) -> None:
+        coordinator, plans = await _plan_target(hass, call)
+        await coordinator.async_run_standby_plan(find_plan(plans, call.data["plan"]).id)
+
+    async def _handle_set_default(call: ServiceCall) -> None:
+        coordinator, plans = await _plan_target(hass, call)
+        plan = find_plan(plans, call.data["plan"])
+        await coordinator.async_set_default_standby_plan(plan.id)
+
+    hass.services.async_register(
+        DOMAIN,
+        _SERVICE_LIST_CLIMATE_PLANS,
+        _handle_list,
+        supports_response=SupportsResponse.ONLY,
+    )
+    for name, handler in (
+        (_SERVICE_CREATE_CLIMATE_PLAN, _handle_create),
+        (_SERVICE_UPDATE_CLIMATE_PLAN, _handle_update),
+        (_SERVICE_DELETE_CLIMATE_PLAN, _handle_delete),
+        (_SERVICE_RUN_CLIMATE_PLAN, _handle_run),
+        (_SERVICE_SET_DEFAULT_CLIMATE_PLAN, _handle_set_default),
+    ):
+        hass.services.async_register(DOMAIN, name, handler)
+
+
 def _async_register_services(hass: HomeAssistant) -> None:
     """Register domain services (idempotent — safe to call multiple times)."""
 
@@ -608,6 +741,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
         _SERVICE_SAVE_CHARGING_SCHEDULE,
         _handle_save_charging_schedule,
     )
+    _async_register_plan_services(hass)
 
     _LOGGER.debug("Registered %s domain services", len(_ALL_SERVICES))
 

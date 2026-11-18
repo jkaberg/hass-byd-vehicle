@@ -105,3 +105,133 @@ save_charging_schedule:
       default: true
       selector:
         boolean:
+
+list_climate_plans:
+  fields:
+    device_id: &plan_device
+      required: true
+      selector:
+        device:
+          integration: byd_vehicle
+
+create_climate_plan:
+  fields:
+    device_id: *plan_device
+    name:
+      required: true
+      example: Work
+      selector:
+        text:
+    repeat: &plan_repeat
+      selector:
+        select:
+          options:
+            - value: "off"
+              label: "Off (not scheduled)"
+            - value: single
+              label: Single (once)
+            - value: every_day
+              label: Every day
+            - value: weekdays
+              label: Weekdays
+            - value: weekends
+              label: Weekends
+            - value: custom
+              label: Custom weekdays
+    start_time: &plan_start_time
+      example: "07:15"
+      selector:
+        time:
+    date: &plan_date
+      selector:
+        date:
+    weekdays: &plan_weekdays
+      selector:
+        select:
+          multiple: true
+          options:
+            - value: mon
+              label: Monday
+            - value: tue
+              label: Tuesday
+            - value: wed
+              label: Wednesday
+            - value: thu
+              label: Thursday
+            - value: fri
+              label: Friday
+            - value: sat
+              label: Saturday
+            - value: sun
+              label: Sunday
+    climate: &plan_climate
+      selector:
+        boolean:
+    temperature: &plan_temperature
+      example: 21
+      selector:
+        number:
+          min: 15
+          max: 33
+          step: 1
+          unit_of_measurement: "°C"
+    duration: &plan_duration
+      example: 10
+      selector:
+        number:
+          min: 10
+          max: 30
+          step: 5
+          unit_of_measurement: min
+    driver_seat_heat: &plan_seat
+      selector:
+        select:
+          options:
+            - "off"
+            - low
+            - high
+    driver_seat_ventilation: *plan_seat
+    passenger_seat_heat: *plan_seat
+    passenger_seat_ventilation: *plan_seat
+    steering_wheel_heat: &plan_steering
+      selector:
+        boolean:
+
+update_climate_plan:
+  fields:
+    device_id: *plan_device
+    plan: &plan_ref
+      required: true
+      example: Work
+      selector:
+        text:
+    name:
+      selector:
+        text:
+    repeat: *plan_repeat
+    start_time: *plan_start_time
+    date: *plan_date
+    weekdays: *plan_weekdays
+    climate: *plan_climate
+    temperature: *plan_temperature
+    duration: *plan_duration
+    driver_seat_heat: *plan_seat
+    driver_seat_ventilation: *plan_seat
+    passenger_seat_heat: *plan_seat
+    passenger_seat_ventilation: *plan_seat
+    steering_wheel_heat: *plan_steering
+
+delete_climate_plan:
+  fields:
+    device_id: *plan_device
+    plan: *plan_ref
+
+run_climate_plan:
+  fields:
+    device_id: *plan_device
+    plan: *plan_ref
+
+set_default_climate_plan:
+  fields:
+    device_id: *plan_device
+    plan: *plan_ref

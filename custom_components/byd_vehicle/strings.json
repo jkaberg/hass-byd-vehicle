@@ -93,6 +93,186 @@
           "description": "Whether the schedule is active."
         }
       }
+    },
+    "list_climate_plans": {
+      "name": "List climate plans",
+      "description": "Return the vehicle's climate plans with their schedule and settings.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        }
+      }
+    },
+    "create_climate_plan": {
+      "name": "Create climate plan",
+      "description": "Create a climate plan. Settings left out are copied from the default plan.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Name of the new plan."
+        },
+        "repeat": {
+          "name": "Repeat",
+          "description": "How often the plan runs: off (not scheduled), single (once), every day, weekdays, weekends, or custom weekdays."
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "Time of day the plan starts, in HH:MM (24-hour)."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Day of a single run. Defaults to the next time the start time comes round."
+        },
+        "weekdays": {
+          "name": "Weekdays",
+          "description": "Which weekdays the plan runs on. Only used when Repeat is 'custom'."
+        },
+        "climate": {
+          "name": "A/C",
+          "description": "Whether the plan runs the A/C."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "A/C temperature, within the car's range."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "How long the A/C runs, 10 to 30 minutes."
+        },
+        "driver_seat_heat": {
+          "name": "Driver seat heating",
+          "description": "Driver seat heating level."
+        },
+        "driver_seat_ventilation": {
+          "name": "Driver seat ventilation",
+          "description": "Driver seat ventilation level."
+        },
+        "passenger_seat_heat": {
+          "name": "Passenger seat heating",
+          "description": "Passenger seat heating level."
+        },
+        "passenger_seat_ventilation": {
+          "name": "Passenger seat ventilation",
+          "description": "Passenger seat ventilation level."
+        },
+        "steering_wheel_heat": {
+          "name": "Steering wheel heating",
+          "description": "Whether the plan heats the steering wheel."
+        }
+      }
+    },
+    "update_climate_plan": {
+      "name": "Update climate plan",
+      "description": "Change a climate plan. Fields left out keep their current value.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        },
+        "plan": {
+          "name": "Plan",
+          "description": "The plan's id or name. Ids are listed by 'List climate plans' and on the 'Next climate plan' sensor."
+        },
+        "name": {
+          "name": "Name",
+          "description": "New name for the plan."
+        },
+        "repeat": {
+          "name": "Repeat",
+          "description": "How often the plan runs: off (not scheduled), single (once), every day, weekdays, weekends, or custom weekdays."
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "Time of day the plan starts, in HH:MM (24-hour)."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Day of a single run. Defaults to the next time the start time comes round."
+        },
+        "weekdays": {
+          "name": "Weekdays",
+          "description": "Which weekdays the plan runs on. Only used when Repeat is 'custom'."
+        },
+        "climate": {
+          "name": "A/C",
+          "description": "Whether the plan runs the A/C."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "A/C temperature, within the car's range."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "How long the A/C runs, 10 to 30 minutes."
+        },
+        "driver_seat_heat": {
+          "name": "Driver seat heating",
+          "description": "Driver seat heating level."
+        },
+        "driver_seat_ventilation": {
+          "name": "Driver seat ventilation",
+          "description": "Driver seat ventilation level."
+        },
+        "passenger_seat_heat": {
+          "name": "Passenger seat heating",
+          "description": "Passenger seat heating level."
+        },
+        "passenger_seat_ventilation": {
+          "name": "Passenger seat ventilation",
+          "description": "Passenger seat ventilation level."
+        },
+        "steering_wheel_heat": {
+          "name": "Steering wheel heating",
+          "description": "Whether the plan heats the steering wheel."
+        }
+      }
+    },
+    "delete_climate_plan": {
+      "name": "Delete climate plan",
+      "description": "Delete a climate plan. The preset plan can't be deleted, so it is unscheduled instead.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        },
+        "plan": {
+          "name": "Plan",
+          "description": "The plan's id or name. Ids are listed by 'List climate plans' and on the 'Next climate plan' sensor."
+        }
+      }
+    },
+    "run_climate_plan": {
+      "name": "Run climate plan",
+      "description": "Run a climate plan now. Its schedule is kept.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        },
+        "plan": {
+          "name": "Plan",
+          "description": "The plan's id or name. Ids are listed by 'List climate plans' and on the 'Next climate plan' sensor."
+        }
+      }
+    },
+    "set_default_climate_plan": {
+      "name": "Set default climate plan",
+      "description": "Make a climate plan the default.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        },
+        "plan": {
+          "name": "Plan",
+          "description": "The plan's id or name. Ids are listed by 'List climate plans' and on the 'Next climate plan' sensor."
+        }
+      }
     }
   },
   "config": {
@@ -352,6 +532,9 @@
       },
       "latest_notification": {
         "name": "Latest notification"
+      },
+      "next_climate_plan": {
+        "name": "Next climate plan"
       }
     },
     "binary_sensor": {
@@ -624,11 +807,6 @@
     "device_tracker": {
       "location": {
         "name": "Location"
-      }
-    },
-    "calendar": {
-      "climate_plans": {
-        "name": "Climate plans"
       }
     }
   }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -28,12 +29,17 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.update_coordinator import UpdateFailed
+from homeassistant.util import dt as dt_util
 from pybyd.models.realtime import TirePressureUnit
 from pybyd.models.vehicle import EnergyType, Vehicle
 
 from .const import DOMAIN
 from .coordinator import BydDataUpdateCoordinator
 from .entity import BydVehicleEntity
+from .plans import plan_summary
+
+_LOGGER = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Simple presentation-level validators (pyBYD state engine handles deeper
@@ -1198,6 +1204,54 @@ class BydLatestNotificationSensor(BydVehicleEntity, SensorEntity):
         return attributes
 
 
+class BydNextClimatePlanSensor(BydVehicleEntity, SensorEntity):
+    """Next run of any climate plan, with all plans as attributes.
+
+    The attributes use the same fields as the climate plan services, so
+    a plan's ``id`` can be looked up here.
+    """
+
+    _attr_translation_key = "next_climate_plan"
+    _attr_icon = "mdi:calendar-clock"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(self, coordinator: BydDataUpdateCoordinator) -> None:
+        self._vin = coordinator.vin
+        self._vehicle = coordinator.vehicle
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.vin}_next_climate_plan"
+
+    def _summaries(self) -> list[dict[str, Any]]:
+        plans = self.coordinator.standby_plans
+        if plans is None:
+            return []
+        now = dt_util.now()
+        offset = self.coordinator.temp_offset
+        return [plan_summary(plan, temp_offset=offset, now=now) for plan in plans.plans]
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return the soonest next run."""
+        runs = [s["next_run"] for s in self._summaries() if s["next_run"]]
+        return datetime.fromisoformat(min(runs)) if runs else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose every plan."""
+        attributes = super().extra_state_attributes
+        attributes["plans"] = self._summaries()
+        return attributes
+
+
+async def _plans_supported(coordinator: BydDataUpdateCoordinator) -> bool:
+    try:
+        return await coordinator.async_get_standby_plans() is not None
+    except UpdateFailed as exc:
+        # transient, keep the sensor and let the telemetry poll retry
+        _LOGGER.debug("Plan fetch failed at setup: error=%s", exc)
+        return True
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -1212,6 +1266,8 @@ async def async_setup_entry(
     for vin, coordinator in coordinators.items():
         if coordinator.inbox_enabled:
             entities.append(BydLatestNotificationSensor(coordinator))
+        if await _plans_supported(coordinator):
+            entities.append(BydNextClimatePlanSensor(coordinator))
         vehicle = coordinator.vehicle
         for description in SENSOR_DESCRIPTIONS:
             if description.key == "gps_last_updated":

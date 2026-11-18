@@ -9,7 +9,6 @@ DOMAIN = "byd_vehicle"
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
-    Platform.CALENDAR,
     Platform.CLIMATE,
     Platform.DEVICE_TRACKER,
     Platform.LOCK,
