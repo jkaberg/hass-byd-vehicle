@@ -62,6 +62,9 @@ _LOGGER = logging.getLogger(__name__)
 _HA_EVENT_COMMAND_LIFECYCLE: str = f"{DOMAIN}_command_lifecycle"
 
 _AUTH_ERRORS = (BydAuthenticationError, BydSessionExpiredError)
+# BYD cloud rejects calls with this code once the vehicle authorization bound
+# to the session changes; only a fresh login clears it.
+_VEHICLE_AUTH_MODIFIED_CODE = "8002"
 # The inbox is account-wide, so one fetch serves every vehicle on the entry.
 _INBOX_FETCH_INTERVAL = timedelta(minutes=15)
 _INBOX_STORE_VERSION = 1
@@ -1453,6 +1456,8 @@ class BydGpsUpdateCoordinator(_ReschedulingCoordinator):
             )
         except _RECOVERABLE_ERRORS as exc:
             _LOGGER.warning("GPS fetch failed: vin=%s, error=%s", self._vin, exc)
+            if str(getattr(exc, "code", "")) == _VEHICLE_AUTH_MODIFIED_CODE:
+                await self._api._invalidate_client()
 
         snapshot = car.state
         if snapshot.gps is None:
