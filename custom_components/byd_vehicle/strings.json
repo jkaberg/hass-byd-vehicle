@@ -132,10 +132,6 @@
           "name": "Weekdays",
           "description": "Which weekdays the plan runs on. Only used when Repeat is 'custom'."
         },
-        "climate": {
-          "name": "A/C",
-          "description": "Whether the plan runs the A/C."
-        },
         "temperature": {
           "name": "Temperature",
           "description": "A/C temperature, within the car's range."
@@ -144,21 +140,25 @@
           "name": "Duration",
           "description": "How long the A/C runs, 10 to 30 minutes."
         },
+        "recirculation": {
+          "name": "Recirculation",
+          "description": "Recirculate the cabin air instead of drawing in outside air."
+        },
         "driver_seat_heat": {
           "name": "Driver seat heating",
-          "description": "Driver seat heating level."
+          "description": "Heat the driver seat. Plans only switch seats on or off."
         },
         "driver_seat_ventilation": {
           "name": "Driver seat ventilation",
-          "description": "Driver seat ventilation level."
+          "description": "Ventilate the driver seat. Plans only switch seats on or off."
         },
         "passenger_seat_heat": {
           "name": "Passenger seat heating",
-          "description": "Passenger seat heating level."
+          "description": "Heat the passenger seat. Plans only switch seats on or off."
         },
         "passenger_seat_ventilation": {
           "name": "Passenger seat ventilation",
-          "description": "Passenger seat ventilation level."
+          "description": "Ventilate the passenger seat. Plans only switch seats on or off."
         },
         "steering_wheel_heat": {
           "name": "Steering wheel heating",
@@ -198,10 +198,6 @@
           "name": "Weekdays",
           "description": "Which weekdays the plan runs on. Only used when Repeat is 'custom'."
         },
-        "climate": {
-          "name": "A/C",
-          "description": "Whether the plan runs the A/C."
-        },
         "temperature": {
           "name": "Temperature",
           "description": "A/C temperature, within the car's range."
@@ -210,21 +206,25 @@
           "name": "Duration",
           "description": "How long the A/C runs, 10 to 30 minutes."
         },
+        "recirculation": {
+          "name": "Recirculation",
+          "description": "Recirculate the cabin air instead of drawing in outside air."
+        },
         "driver_seat_heat": {
           "name": "Driver seat heating",
-          "description": "Driver seat heating level."
+          "description": "Heat the driver seat. Plans only switch seats on or off."
         },
         "driver_seat_ventilation": {
           "name": "Driver seat ventilation",
-          "description": "Driver seat ventilation level."
+          "description": "Ventilate the driver seat. Plans only switch seats on or off."
         },
         "passenger_seat_heat": {
           "name": "Passenger seat heating",
-          "description": "Passenger seat heating level."
+          "description": "Heat the passenger seat. Plans only switch seats on or off."
         },
         "passenger_seat_ventilation": {
           "name": "Passenger seat ventilation",
-          "description": "Passenger seat ventilation level."
+          "description": "Ventilate the passenger seat. Plans only switch seats on or off."
         },
         "steering_wheel_heat": {
           "name": "Steering wheel heating",

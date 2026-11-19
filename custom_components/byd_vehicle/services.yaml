@@ -164,9 +164,6 @@ create_climate_plan:
               label: Saturday
             - value: sun
               label: Sunday
-    climate: &plan_climate
-      selector:
-        boolean:
     temperature: &plan_temperature
       example: 21
       selector:
@@ -183,13 +180,12 @@ create_climate_plan:
           max: 30
           step: 5
           unit_of_measurement: min
+    recirculation: &plan_recirculation
+      selector:
+        boolean:
     driver_seat_heat: &plan_seat
       selector:
-        select:
-          options:
-            - "off"
-            - low
-            - high
+        boolean:
     driver_seat_ventilation: *plan_seat
     passenger_seat_heat: *plan_seat
     passenger_seat_ventilation: *plan_seat
@@ -212,9 +208,9 @@ update_climate_plan:
     start_time: *plan_start_time
     date: *plan_date
     weekdays: *plan_weekdays
-    climate: *plan_climate
     temperature: *plan_temperature
     duration: *plan_duration
+    recirculation: *plan_recirculation
     driver_seat_heat: *plan_seat
     driver_seat_ventilation: *plan_seat
     passenger_seat_heat: *plan_seat

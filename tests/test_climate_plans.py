@@ -132,13 +132,13 @@ def test_summary() -> None:
         "start_time": "13:30",
         "weekdays": ["fri", "sat", "sun"],
         "next_run": "2026-11-20T13:30:00+01:00",
-        "climate": True,
         "temperature": 19.0,
         "duration": 10,
-        "driver_seat_heat": "high",
-        "driver_seat_ventilation": "off",
-        "passenger_seat_heat": "off",
-        "passenger_seat_ventilation": "high",
+        "recirculation": False,
+        "driver_seat_heat": True,
+        "driver_seat_ventilation": False,
+        "passenger_seat_heat": False,
+        "passenger_seat_ventilation": True,
         "steering_wheel_heat": True,
     }
 
@@ -282,21 +282,39 @@ def test_commands_override_temperature_keeps_other_ac_settings() -> None:
     assert climate.control_params_map["cycleMode"] == 2
 
 
-def test_commands_drop_and_add() -> None:
+def test_commands_add_seats_and_wheel_on_top_of_ac() -> None:
     commands = commands_from_call(
-        {"climate": False, "driver_seat_heat": "low", "steering_wheel_heat": True},
+        {"driver_seat_heat": True, "steering_wheel_heat": True},
         base=_plan(),
         temp_offset=14,
         supports=_all,
     )
-    assert _types(commands) == ["VENTILATIONHEATING", "STEERINGWHEELHEATING"]
-    assert commands[0].control_params_map["mainHeat"] == 2
-    assert commands[0].control_params_map["copilotHeat"] == 3
+    assert _types(commands) == ["OPENAIR", "VENTILATIONHEATING", "STEERINGWHEELHEATING"]
+    assert commands[1].control_params_map["mainHeat"] == 1
+    assert commands[1].control_params_map["copilotHeat"] == 3
+
+
+def test_commands_recirculation() -> None:
+    (climate,) = commands_from_call(
+        {"recirculation": True}, base=_plan(), temp_offset=14, supports=_all
+    )
+    assert climate.control_params_map["cycleMode"] == 2
+    assert climate.control_params_map["mainSettingTemp"] == 5
+
+
+def test_commands_wheel_off_keeps_ac() -> None:
+    commands = commands_from_call(
+        {"steering_wheel_heat": False},
+        base=_full_plan(),
+        temp_offset=14,
+        supports=_all,
+    )
+    assert _types(commands) == ["OPENAIR", "VENTILATIONHEATING"]
 
 
 def test_commands_seats_all_off_drops_seat_command() -> None:
     commands = commands_from_call(
-        {"driver_seat_heat": "off", "passenger_seat_ventilation": "off"},
+        {"driver_seat_heat": False, "passenger_seat_ventilation": False},
         base=_full_plan(),
         temp_offset=14,
         supports=_all,
@@ -305,19 +323,17 @@ def test_commands_seats_all_off_drops_seat_command() -> None:
 
 
 def test_commands_without_base_use_defaults() -> None:
-    (climate,) = commands_from_call(
-        {"climate": True}, base=None, temp_offset=14, supports=_all
-    )
+    (climate,) = commands_from_call({}, base=None, temp_offset=14, supports=_all)
     assert climate.control_params_map["mainSettingTemp"] == 7  # 21 °C
     assert climate.control_params_map["timeSpan"] == 1
+    assert climate.control_params_map["cycleMode"] == 1
 
 
 @pytest.mark.parametrize(
     "data",
     [
-        {"climate": False},
         {"temperature": 40},
-        {"driver_seat_heat": "high"},
+        {"driver_seat_heat": True},
         {"steering_wheel_heat": True},
     ],
 )

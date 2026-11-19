@@ -22,6 +22,7 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 from pybyd import (
+    DEFAULT_TEMP_OFFSET_C,
     BydApiError,
     BydAuthenticationError,
     BydCar,
@@ -72,7 +73,6 @@ _AUTH_ERRORS = (BydAuthenticationError, BydSessionExpiredError)
 # The inbox is account-wide, so one fetch serves every vehicle on the entry.
 _INBOX_FETCH_INTERVAL = timedelta(minutes=15)
 _PLAN_FETCH_INTERVAL = timedelta(minutes=30)
-_DEFAULT_TEMP_OFFSET_C = 14.0
 _INBOX_STORE_VERSION = 1
 _RECOVERABLE_ERRORS = (
     BydApiError,
@@ -1096,13 +1096,7 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
     def temp_offset(self) -> float:
         """°C offset of the car's climate scale (14 → 15-31 °C)."""
         car = self._car
-        return car.hvac.temp_offset if car is not None else _DEFAULT_TEMP_OFFSET_C
-
-    @property
-    def temp_range(self) -> tuple[float, float]:
-        """Climate setpoint range in °C."""
-        offset = self.temp_offset
-        return offset + 1, offset + 17
+        return car.hvac.temp_offset if car is not None else DEFAULT_TEMP_OFFSET_C
 
     async def async_get_standby_plans(self) -> StandbyPlanList | None:
         """Fetch the climate plans and cache them.

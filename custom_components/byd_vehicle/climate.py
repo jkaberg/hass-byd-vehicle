@@ -16,6 +16,7 @@ from pybyd.models.vehicle import Vehicle
 from .const import (
     CONF_CLIMATE_DURATION,
     DEFAULT_CLIMATE_DURATION,
+    DEFAULT_CLIMATE_TEMP,
     DOMAIN,
 )
 from .coordinator import BydDataUpdateCoordinator
@@ -63,7 +64,7 @@ class BydClimate(BydActionEntity, ClimateEntity):
     _DEFAULT_TEMP_RANGE_C = (15.0, 31.0)
     _PRESET_MAX_HEAT = "max_heat"
     _PRESET_MAX_COOL = "max_cool"
-    _DEFAULT_TEMP_C = 21.0
+    _DEFAULT_TEMP_C = DEFAULT_CLIMATE_TEMP
 
     _attr_has_entity_name = True
     _attr_translation_key = "climate"

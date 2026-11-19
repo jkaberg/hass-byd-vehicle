@@ -1,8 +1,9 @@
 """Climate preconditioning plans: service input and plan summaries.
 
-App 3.6.0 schedules climate through plans (pyBYD#91).  A plan holds up to
-three commands (A/C, front seats, steering wheel heat) and runs once,
-every day or weekly on some days.  The services build plans from flat
+App 3.6.0 schedules climate through plans (pyBYD#91).  A plan always
+runs the A/C and can heat or ventilate the front seats and heat the
+steering wheel on top of it.  It runs once, every day or weekly on some
+days.  The services build plans from flat
 fields; this module maps those fields to pyBYD's plan models and back.
 """
 
@@ -25,11 +26,10 @@ from pybyd.models.standby import (
     StandbySchedule,
 )
 
+from .const import DEFAULT_CLIMATE_DURATION, DEFAULT_CLIMATE_TEMP
+
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 REPEATS = ("off", "single", "every_day", "weekdays", "weekends", "custom")
-DURATIONS = (10, 15, 20, 25, 30)
-DEFAULT_TEMPERATURE = 21.0
-DEFAULT_DURATION = 10
 
 _FIXED_DAYS = {"weekdays": (0, 1, 2, 3, 4), "weekends": (5, 6)}
 _SCHEDULE_FIELDS = ("repeat", "start_time", "date", "weekdays")
@@ -45,6 +45,7 @@ SEAT_FIELDS: dict[str, tuple[str, str]] = {
 }
 _KNOWN_COMMANDS = (COMMAND_CLIMATE, COMMAND_SEATS, COMMAND_STEERING_WHEEL)
 _CLIMATE_KEYS = ("timeSpan", "mainSettingTemp", "copilotSettingTemp")
+_CLIMATE_FIELDS = ("temperature", "duration", "recirculation")
 
 
 def plan_zone(plan: StandbyPlan | None) -> datetime.tzinfo:
@@ -117,10 +118,10 @@ def plan_summary(
     run = next_run(plan, now)
     summary["next_run"] = run.isoformat() if run else None
     climate = plan.climate(temp_offset=temp_offset)
-    summary["climate"] = climate is not None
     if climate is not None:
         summary["temperature"] = climate.temperature
         summary["duration"] = climate.duration
+        summary["recirculation"] = climate.recirculation
     seats = plan.seats
     for field, (seat_field, _) in SEAT_FIELDS.items():
         value = getattr(seats, seat_field) if seats is not None else None
@@ -249,16 +250,13 @@ def commands_from_call(
 ) -> list[StandbyPlanCommand]:
     """Plan commands from service fields on top of ``base``'s commands.
 
-    Fields left out keep ``base``'s settings.  Each command is only kept
-    when it does something; a plan has to do at least one thing.
+    Fields left out keep ``base``'s settings.  The A/C is always on;
+    seats and steering wheel heat are only kept when they do something.
     """
     base_commands = list(base.commands) if base is not None else []
     # keep commands we don't model as they are
     commands = [c for c in base_commands if c.command_type not in _KNOWN_COMMANDS]
-
-    climate = _climate_command(data, base, temp_offset)
-    if climate is not None:
-        commands.insert(0, climate)
+    commands.insert(0, _climate_command(data, base, temp_offset))
 
     seats = _seats_command(data, base, supports)
     if seats is not None:
@@ -273,41 +271,39 @@ def commands_from_call(
         if not supports("steering_wheel_heat"):
             raise HomeAssistantError("This car has no steering wheel heat")
         commands.append(StandbyPlanCommand.steering_wheel())
-
-    if not commands:
-        raise HomeAssistantError(
-            "A climate plan has to turn on the A/C, a seat or the steering wheel heat"
-        )
     return commands
 
 
 def _climate_command(
     data: Mapping[str, Any], base: StandbyPlan | None, temp_offset: float
-) -> StandbyPlanCommand | None:
+) -> StandbyPlanCommand:
     current = base.climate(temp_offset=temp_offset) if base is not None else None
     existing = base.command(COMMAND_CLIMATE) if base is not None else None
-    enabled = data.get("climate")
-    touched = data.get("temperature") is not None or data.get("duration") is not None
-    if enabled is False or (enabled is None and current is None and not touched):
-        return None
-    if existing is not None and not touched:
+    if existing is not None and all(data.get(f) is None for f in _CLIMATE_FIELDS):
         return existing
     temperature = data.get("temperature")
     if temperature is None:
-        temperature = current.temperature if current else DEFAULT_TEMPERATURE
+        temperature = current.temperature if current else DEFAULT_CLIMATE_TEMP
     duration = data.get("duration")
     if duration is None:
-        duration = current.duration if current else DEFAULT_DURATION
+        duration = current.duration if current else DEFAULT_CLIMATE_DURATION
+    recirculation = data.get("recirculation")
+    if recirculation is None:
+        recirculation = current.recirculation if current else False
     try:
         built = StandbyPlanCommand.climate(
-            float(temperature), int(duration), temp_offset=temp_offset
+            float(temperature),
+            int(duration),
+            recirculation=bool(recirculation),
+            temp_offset=temp_offset,
         )
     except ValueError as exc:
         raise HomeAssistantError(str(exc)) from exc
     if existing is None:
         return built
-    # only change what was asked for, keep eg cycleMode as it is
-    changed = {key: built.control_params_map[key] for key in _CLIMATE_KEYS}
+    # only change what we model, keep any other A/C keys as they are
+    keys = (*_CLIMATE_KEYS, "cycleMode")
+    changed = {key: built.control_params_map[key] for key in keys}
     return existing.model_copy(
         update={"control_params_map": {**existing.control_params_map, **changed}}
     )
@@ -317,7 +313,7 @@ def _seats_command(
     data: Mapping[str, Any], base: StandbyPlan | None, supports: Callable[[str], bool]
 ) -> StandbyPlanCommand | None:
     current = base.seats if base is not None else None
-    if current is not None and not any(data.get(field) for field in SEAT_FIELDS):
+    if current is not None and all(data.get(f) is None for f in SEAT_FIELDS):
         existing = base.command(COMMAND_SEATS) if base is not None else None
         return existing if current.active else None
     values: dict[str, Any] = {}
@@ -330,6 +326,6 @@ def _seats_command(
         elif current is not None and getattr(current, seat_field) is not None:
             values[seat_field] = getattr(current, seat_field)
         elif supports(capability):
-            values[seat_field] = "off"
+            values[seat_field] = False
     seats = PlanSeats(**values)
     return StandbyPlanCommand.seats(seats) if seats.active else None
