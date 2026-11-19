@@ -176,7 +176,7 @@
         },
         "plan": {
           "name": "Plan",
-          "description": "The plan's id or name. Ids are listed by 'List climate plans' and on the 'Next climate plan' sensor."
+          "description": "Plan name as shown in the BYD app, eg 'Work'. If two plans share a name, use the id: find it under 'plans' in the attributes of the 'Next climate plan' sensor, or run 'List climate plans'."
         },
         "name": {
           "name": "Name",
@@ -242,7 +242,7 @@
         },
         "plan": {
           "name": "Plan",
-          "description": "The plan's id or name. Ids are listed by 'List climate plans' and on the 'Next climate plan' sensor."
+          "description": "Plan name as shown in the BYD app, eg 'Work'. If two plans share a name, use the id: find it under 'plans' in the attributes of the 'Next climate plan' sensor, or run 'List climate plans'."
         }
       }
     },
@@ -256,7 +256,7 @@
         },
         "plan": {
           "name": "Plan",
-          "description": "The plan's id or name. Ids are listed by 'List climate plans' and on the 'Next climate plan' sensor."
+          "description": "Plan name as shown in the BYD app, eg 'Work'. If two plans share a name, use the id: find it under 'plans' in the attributes of the 'Next climate plan' sensor, or run 'List climate plans'."
         }
       }
     },
@@ -270,7 +270,7 @@
         },
         "plan": {
           "name": "Plan",
-          "description": "The plan's id or name. Ids are listed by 'List climate plans' and on the 'Next climate plan' sensor."
+          "description": "Plan name as shown in the BYD app, eg 'Work'. If two plans share a name, use the id: find it under 'plans' in the attributes of the 'Next climate plan' sensor, or run 'List climate plans'."
         }
       }
     }
