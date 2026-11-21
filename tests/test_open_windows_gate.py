@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -28,7 +28,11 @@ class _Coordinator:
 
 
 async def _keys(monkeypatch: pytest.MonkeyPatch, open_available: bool) -> list[str]:
-    for name in ("BydForcePollButton", "BydStartChargingButton", "BydFetchEnergyButton"):
+    for name in (
+        "BydForcePollButton",
+        "BydStartChargingButton",
+        "BydFetchEnergyButton",
+    ):
         monkeypatch.setattr(button, name, lambda *args: None)
     monkeypatch.setattr(
         button, "BydButton", lambda coordinator, vin, vehicle, desc: desc.key
@@ -38,7 +42,7 @@ async def _keys(monkeypatch: pytest.MonkeyPatch, open_available: bool) -> list[s
         data={DOMAIN: {"e": {"coordinators": {"VIN": _Coordinator(open_available)}}}}
     )
     added: list[Any] = []
-    await button.async_setup_entry(hass, entry, added.extend)  # type: ignore[arg-type]
+    await button.async_setup_entry(hass, cast(Any, entry), added.extend)
     return [key for key in added if isinstance(key, str)]
 
 
