@@ -34,6 +34,7 @@ class BydBinarySensorDescription(BinarySensorEntityDescription):
 
     source: str = "realtime"
     attr_key: str | None = None
+    capability_key: str | None = None
     value_fn: Callable[[Any], bool | None] | None = None
     # value_fn returns None on a sentinel reading; a raw 0 then clears a
     # fault already seen, since the car has shown it reports real statuses.
@@ -287,6 +288,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="battery_heat_state",
         source="realtime",
+        capability_key="battery_heat",
         icon="mdi:heat-wave",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -298,6 +300,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="abs_warning",
         source="realtime",
+        capability_key="health_abs",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:car-brake-abs",
         entity_registry_enabled_default=False,
@@ -307,6 +310,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="svs",
         source="realtime",
+        capability_key="health_engine",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:car-wrench",
         entity_registry_enabled_default=False,
@@ -316,6 +320,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="srs",
         source="realtime",
+        capability_key="health_srs",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:airbag",
         entity_registry_enabled_default=False,
@@ -325,6 +330,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="eps",
         source="realtime",
+        capability_key="health_steering",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:steering",
         entity_registry_enabled_default=False,
@@ -334,6 +340,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="esp",
         source="realtime",
+        capability_key="health_esp",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:car-traction-control",
         entity_registry_enabled_default=False,
@@ -343,6 +350,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="pwr",
         source="realtime",
+        capability_key="health_battery",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:flash-alert",
         entity_registry_enabled_default=False,
@@ -352,6 +360,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="power_system",
         source="realtime",
+        capability_key="health_powertrain",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:flash",
         entity_registry_enabled_default=False,
@@ -361,6 +370,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="ect",
         source="realtime",
+        capability_key="health_coolant",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:coolant-temperature",
         entity_registry_enabled_default=False,
@@ -370,6 +380,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="tirepressure_system",
         source="realtime",
+        capability_key="health_tpms",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:car-tire-alert",
         entity_registry_enabled_default=False,
@@ -379,6 +390,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="rapid_tire_leak",
         source="realtime",
+        capability_key="tpms",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:car-tire-alert",
         entity_registry_enabled_default=False,
@@ -388,6 +400,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="left_front_tire_status",
         source="realtime",
+        capability_key="tpms",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:car-tire-alert",
         entity_registry_enabled_default=False,
@@ -398,6 +411,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="right_front_tire_status",
         source="realtime",
+        capability_key="tpms",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:car-tire-alert",
         entity_registry_enabled_default=False,
@@ -408,6 +422,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="left_rear_tire_status",
         source="realtime",
+        capability_key="tpms",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:car-tire-alert",
         entity_registry_enabled_default=False,
@@ -418,6 +433,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="right_rear_tire_status",
         source="realtime",
+        capability_key="tpms",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:car-tire-alert",
         entity_registry_enabled_default=False,
@@ -428,6 +444,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="upgrade_status",
         source="realtime",
+        capability_key="mobile_ota",
         icon="mdi:cellphone-arrow-down",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -463,6 +480,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="oil_pressure_system",
         source="realtime",
+        capability_key="health_oil_pressure",
         icon="mdi:oil",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -471,6 +489,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="braking_system",
         source="realtime",
+        capability_key="health_braking",
         icon="mdi:car-brake-alert",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -479,6 +498,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="charging_system",
         source="realtime",
+        capability_key="health_charging",
         icon="mdi:ev-station",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -487,6 +507,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="steering_system",
         source="realtime",
+        capability_key="health_steering",
         icon="mdi:steering",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -506,6 +527,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="scheduled_charge_enabled",
         source="charging_schedule_charge",
+        capability_key="start_charge",
         icon="mdi:calendar-check",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -514,6 +536,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
     BydBinarySensorDescription(
         key="scheduled_charge_until_full",
         source="charging_schedule_charge",
+        capability_key="start_charge",
         icon="mdi:battery-charging-100",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -535,6 +558,11 @@ async def async_setup_entry(
     for vin, coordinator in coordinators.items():
         vehicle = coordinator.vehicle
         for description in BINARY_SENSOR_DESCRIPTIONS:
+            if (
+                description.capability_key is not None
+                and not coordinator.capability_supported(description.capability_key)
+            ):
+                continue
             entities.append(BydBinarySensor(coordinator, vin, vehicle, description))
 
     async_add_entities(entities)

@@ -829,6 +829,21 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         value = getattr(capabilities, capability_key, None)
         return bool(value)
 
+    def capability_supported(self, capability_key: str) -> bool:
+        """Return True unless pyBYD explicitly marks *capability_key* False.
+
+        Used for read-only sensors so vehicles without ``latest_config``
+        metadata keep their sensors, while vehicles whose ``latest_config``
+        explicitly omits a capability skip unsupported entities.
+        """
+        car = getattr(self, "_car", None)
+        if car is None:
+            return True
+        capabilities = getattr(car, "capabilities", None)
+        if capabilities is None:
+            return True
+        return getattr(capabilities, capability_key, None) is not False
+
     def _should_fetch_hvac(
         self,
         snapshot: VehicleSnapshot | None,
@@ -1193,6 +1208,14 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         A failed probe counts as supported, so a flaky cloud at startup
         doesn't drop the entities; the telemetry poll retries.
         """
+        vehicle = getattr(self, "_vehicle", None)
+        if vehicle is not None and getattr(vehicle, "vehicle_fun_learn_info", None):
+            if not getattr(vehicle, "ota_upgrade_supported", True):
+                self._ota_supported = False
+                return False
+        if not self.capability_supported("mobile_ota"):
+            self._ota_supported = False
+            return False
         async with self._ota_probe:
             if self._ota_supported is None:
                 try:

@@ -29,8 +29,9 @@ async def async_setup_entry(
     entities: list[TimeEntity] = []
     for vin, coordinator in coordinators.items():
         vehicle = coordinator.vehicle
-        entities.append(BydStartTimeEntity(coordinator, vin, vehicle))
-        entities.append(BydEndTimeEntity(coordinator, vin, vehicle))
+        if coordinator.capability_available("start_charge"):
+            entities.append(BydStartTimeEntity(coordinator, vin, vehicle))
+            entities.append(BydEndTimeEntity(coordinator, vin, vehicle))
         if await coordinator.async_ota_supported():
             entities.append(BydOtaAutoUpgradeTime(coordinator, vin, vehicle))
 
