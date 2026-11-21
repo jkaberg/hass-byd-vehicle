@@ -143,6 +143,7 @@ class BydSensorDescription(SensorEntityDescription):
 
     source: str = "realtime"
     attr_key: str | None = None
+    capability_key: str | None = None
     value_fn: Callable[[Any], Any] | None = None
     unit_fn: Callable[[Any], str | None] | None = None
     state_attrs_fn: Callable[[Any], dict[str, Any]] | None = None
@@ -503,6 +504,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="left_front_tire_pressure",
         source="realtime",
+        capability_key="direct_tpms",
         native_unit_of_measurement=UnitOfPressure.KPA,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -511,6 +513,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="right_front_tire_pressure",
         source="realtime",
+        capability_key="direct_tpms",
         native_unit_of_measurement=UnitOfPressure.KPA,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -519,6 +522,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="left_rear_tire_pressure",
         source="realtime",
+        capability_key="direct_tpms",
         native_unit_of_measurement=UnitOfPressure.KPA,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -527,6 +531,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="right_rear_tire_pressure",
         source="realtime",
+        capability_key="direct_tpms",
         native_unit_of_measurement=UnitOfPressure.KPA,
         device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -1127,6 +1132,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="scheduled_charge_start_time",
         source="charging_schedule_charge",
+        capability_key="start_charge",
         value_fn=lambda obj: (
             obj.start_time.strftime("%H:%M")
             if obj is not None and obj.start_time is not None
@@ -1139,6 +1145,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="scheduled_charge_end_time",
         source="charging_schedule_charge",
+        capability_key="start_charge",
         # ``charge_until_full`` flags the wire sentinel ``"full"`` —
         # there's no clock-time end, so surface as unavailable rather
         # than showing a misleading value.
@@ -1157,6 +1164,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="scheduled_charge_repeat",
         source="charging_schedule_charge",
+        capability_key="start_charge",
         value_fn=lambda obj: (
             _format_charge_way(obj.charge_way) if obj is not None else None
         ),
@@ -1270,6 +1278,11 @@ async def async_setup_entry(
             entities.append(BydNextClimatePlanSensor(coordinator))
         vehicle = coordinator.vehicle
         for description in SENSOR_DESCRIPTIONS:
+            if (
+                description.capability_key is not None
+                and not coordinator.capability_supported(description.capability_key)
+            ):
+                continue
             if description.key == "gps_last_updated":
                 gps_coordinator = gps_coordinators.get(vin)
                 if gps_coordinator is not None:

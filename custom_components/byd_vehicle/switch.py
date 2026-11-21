@@ -43,9 +43,10 @@ async def async_setup_entry(
 
         if coordinator.capability_available("climate"):
             entities.append(BydClimateFreshAirSwitch(coordinator, vin, vehicle))
-        entities.append(BydScheduleEnabledSwitch(coordinator, vin, vehicle))
-        entities.append(BydChargeToFullSwitch(coordinator, vin, vehicle))
-        entities.append(BydRepeatDailySwitch(coordinator, vin, vehicle))
+        if coordinator.capability_available("start_charge"):
+            entities.append(BydScheduleEnabledSwitch(coordinator, vin, vehicle))
+            entities.append(BydChargeToFullSwitch(coordinator, vin, vehicle))
+            entities.append(BydRepeatDailySwitch(coordinator, vin, vehicle))
         if await coordinator.async_ota_supported():
             entities.append(BydOtaAutoUpgradeSwitch(coordinator, vin, vehicle))
 
