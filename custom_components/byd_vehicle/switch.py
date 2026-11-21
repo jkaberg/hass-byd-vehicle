@@ -46,6 +46,8 @@ async def async_setup_entry(
         entities.append(BydScheduleEnabledSwitch(coordinator, vin, vehicle))
         entities.append(BydChargeToFullSwitch(coordinator, vin, vehicle))
         entities.append(BydRepeatDailySwitch(coordinator, vin, vehicle))
+        if await coordinator.async_ota_supported():
+            entities.append(BydOtaAutoUpgradeSwitch(coordinator, vin, vehicle))
 
     async_add_entities(entities)
 
@@ -497,3 +499,43 @@ class BydClimateFreshAirSwitch(BydVehicleEntity, RestoreEntity, SwitchEntity):
         """Recirculate for remote climate starts (BYD default)."""
         self.coordinator.climate_fresh_air = False
         self.async_write_ha_state()
+
+
+class BydOtaAutoUpgradeSwitch(BydActionEntity, SwitchEntity):
+    """Night auto-upgrade of the car's firmware."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "ota_auto_upgrade"
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: BydDataUpdateCoordinator,
+        vin: str,
+        vehicle: Vehicle,
+    ) -> None:
+        self._vin = vin
+        self._vehicle = vehicle
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{vin}_switch_ota_auto_upgrade"
+
+    @property
+    def available(self) -> bool:
+        """Available once the firmware status was fetched."""
+        return super().available and self.coordinator.ota is not None
+
+    @property
+    def is_on(self) -> bool | None:
+        """Whether night auto-upgrade is on."""
+        ota = self.coordinator.ota
+        return ota.auto_upgrade_enabled if ota is not None else None
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn night auto-upgrade on."""
+        self._ensure_action_allowed()
+        await self.coordinator.async_set_ota_auto_upgrade(enabled=True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn night auto-upgrade off."""
+        self._ensure_action_allowed()
+        await self.coordinator.async_set_ota_auto_upgrade(enabled=False)
