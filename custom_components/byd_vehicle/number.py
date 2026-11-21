@@ -68,7 +68,7 @@ async def async_setup_entry(
         )
 
         gps_coordinator = gps_coordinators.get(vin)
-        if gps_coordinator is not None:
+        if gps_coordinator is not None and coordinator.capability_available("location"):
             entities.append(
                 BydGpsPollIntervalNumber(
                     hass,

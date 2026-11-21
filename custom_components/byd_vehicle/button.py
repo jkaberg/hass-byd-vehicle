@@ -130,7 +130,8 @@ async def async_setup_entry(
         gps_coordinator = gps_coordinators.get(vin)
 
         entities.append(BydForcePollButton(coordinator, gps_coordinator, vin, vehicle))
-        entities.append(BydStartChargingButton(coordinator, vin, vehicle))
+        if coordinator.capability_available("start_charge"):
+            entities.append(BydStartChargingButton(coordinator, vin, vehicle))
         entities.append(BydFetchEnergyButton(coordinator, vin, vehicle))
         for description in BUTTON_DESCRIPTIONS:
             if not coordinator.capability_available(description.capability_key):

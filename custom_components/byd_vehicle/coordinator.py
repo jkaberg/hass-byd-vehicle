@@ -79,6 +79,57 @@ _AUTH_ERRORS = (BydAuthenticationError, BydSessionExpiredError)
 # BYD cloud rejects GPS calls with this code while location access is off in
 # the BYD app's Privacy settings. A fresh login alone does not clear it.
 _LOCATION_PERMISSION_CODE = "8002"
+
+_CAPABILITY_GUEST_PERMISSION: dict[str, str] = {
+    "lock": "21",
+    "unlock": "21",
+    "climate": "21",
+    "car_on": "21",
+    "steering_wheel_heat": "21",
+    "driver_seat_heat": "21",
+    "driver_seat_ventilation": "21",
+    "passenger_seat_heat": "21",
+    "passenger_seat_ventilation": "21",
+    "rear_left_seat_heat": "21",
+    "rear_right_seat_heat": "21",
+    "rear_left_seat_ventilation": "21",
+    "rear_right_seat_ventilation": "21",
+    "find_car": "21",
+    "flash_lights": "21",
+    "close_windows": "21",
+    "open_windows": "21",
+    "open_trunk": "21",
+    "close_trunk": "21",
+    "one_click_shutdown": "21",
+    "scheduled_departure": "21",
+    "location": "31",
+    "start_charge": "41",
+    "stop_charge": "41",
+    "battery_heat": "43",
+}
+
+
+def _vehicle_has_guest_permission(vehicle: Any, code: str) -> bool:
+    """Return whether *vehicle* allows guest permission *code*."""
+    if vehicle is None or not getattr(vehicle, "is_shared", False):
+        return True
+    has_perm_fn = getattr(vehicle, "has_permission", None)
+    if callable(has_perm_fn):
+        return bool(has_perm_fn(code))
+    raw_ranges = list(getattr(vehicle, "range_detail_list", None) or [])
+    if not raw_ranges:
+        return True
+    ranges = list(raw_ranges)
+    while ranges:
+        item = ranges.pop()
+        if str(getattr(item, "code", "")) == code:
+            return True
+        children = getattr(item, "children", None)
+        if children:
+            ranges.extend(children)
+    return False
+
+
 # The inbox is account-wide, so one fetch serves every vehicle on the entry.
 _INBOX_FETCH_INTERVAL = timedelta(minutes=15)
 _PLAN_FETCH_INTERVAL = timedelta(minutes=30)
@@ -815,12 +866,19 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
     def is_vehicle_on(self) -> bool:
         return self._is_vehicle_on_from_snapshot(self.data) is True
 
+    def guest_has_permission(self, code: str) -> bool:
+        """Return whether the account holds guest permission *code* for this vehicle."""
+        return _vehicle_has_guest_permission(getattr(self, "_vehicle", None), code)
+
     def capability_available(self, capability_key: str) -> bool:
-        """Return capability availability from pyBYD.
+        """Return capability availability from pyBYD and guest permissions.
 
         Missing capability metadata is treated as unavailable.
         """
-        car = self._car
+        req_perm = _CAPABILITY_GUEST_PERMISSION.get(capability_key)
+        if req_perm is not None and not self.guest_has_permission(req_perm):
+            return False
+        car = getattr(self, "_car", None)
         if car is None:
             return False
         capabilities = getattr(car, "capabilities", None)
@@ -1150,7 +1208,9 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
 
     async def _async_refresh_standby_plans(self) -> None:
         # piggybacks on the telemetry poll, plans change rarely
-        if self._standby_plans_supported is False:
+        if self._standby_plans_supported is False or not self.guest_has_permission(
+            "21"
+        ):
             return
         fetched = self._standby_plans_fetched_at
         if fetched is not None and datetime.now(UTC) - fetched < _PLAN_FETCH_INTERVAL:
@@ -1679,6 +1739,11 @@ class BydGpsUpdateCoordinator(_ReschedulingCoordinator):
         self._force_next_refresh = False
 
         if not self._polling_enabled and not force:
+            if self.data is not None:
+                return self.data
+            return VehicleSnapshot(vehicle=self._vehicle)
+
+        if not _vehicle_has_guest_permission(getattr(self, "_vehicle", None), "31"):
             if self.data is not None:
                 return self.data
             return VehicleSnapshot(vehicle=self._vehicle)
