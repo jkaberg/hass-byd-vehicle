@@ -46,6 +46,7 @@ from pybyd import (
 )
 from pybyd.config import BydConfig, DeviceProfile
 from pybyd.models.message_center import VehicleMsgItemInfo
+from pybyd.models.ota import OtaUpgradeInfo
 from pybyd.models.standby import (
     StandbyPlan,
     StandbyPlanCommand,
@@ -78,6 +79,8 @@ _AUTH_ERRORS = (BydAuthenticationError, BydSessionExpiredError)
 # The inbox is account-wide, so one fetch serves every vehicle on the entry.
 _INBOX_FETCH_INTERVAL = timedelta(minutes=15)
 _PLAN_FETCH_INTERVAL = timedelta(minutes=30)
+# firmware versions change a few times a year
+_OTA_FETCH_INTERVAL = timedelta(hours=6)
 _INBOX_STORE_VERSION = 1
 _RECOVERABLE_ERRORS = (
     BydApiError,
@@ -644,6 +647,10 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         self._energy_endpoint_unsupported: bool = False
         self._standby_plans: StandbyPlanList | None = None
         self._standby_plans_supported: bool | None = None
+        self._ota: OtaUpgradeInfo | None = None
+        self._ota_supported: bool | None = None
+        self._ota_fetched_at: datetime | None = None
+        self._ota_probe = asyncio.Lock()
         self._standby_plans_fetched_at: datetime | None = None
         self._cancel_hvac_final_retry: CALLBACK_TYPE | None = None
         self.update_pending: bool = False
@@ -925,6 +932,7 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
             _LOGGER.debug("Inbox fetch failed: vin=%s error=%s", self._vin[-6:], exc)
 
         await self._async_refresh_standby_plans()
+        await self._async_refresh_ota()
 
         snapshot = car.state
         self._schedule_hvac_final_reconcile_if_needed(previous_snapshot, snapshot)
@@ -1148,6 +1156,89 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
             await self.async_get_standby_plans()
         except UpdateFailed as exc:
             _LOGGER.debug("Plan fetch failed: vin=%s, error=%s", self._vin[-6:], exc)
+
+    @property
+    def ota(self) -> OtaUpgradeInfo | None:
+        """Last fetched firmware status, ``None`` before the first fetch."""
+        return self._ota
+
+    async def async_get_ota(self) -> OtaUpgradeInfo | None:
+        """Fetch the firmware status and cache it.
+
+        Returns ``None`` when the cloud doesn't offer OTA for this car.
+        Other failures raise ``UpdateFailed``.
+        """
+
+        async def _handler(client: BydClient) -> OtaUpgradeInfo | None:
+            try:
+                return await client.get_ota_version(self._vin)
+            except BydEndpointNotSupportedError:
+                return None
+
+        result: OtaUpgradeInfo | None = await self._api.async_call(
+            _handler, vin=self._vin, command="get_ota_version"
+        )
+        self._ota_fetched_at = datetime.now(UTC)
+        self._ota_supported = result is not None
+        if result is not None:
+            self._ota = result
+        return result
+
+    async def async_ota_supported(self) -> bool:
+        """Whether to add OTA entities, probing the cloud once at setup.
+
+        A failed probe counts as supported, so a flaky cloud at startup
+        doesn't drop the entities; the telemetry poll retries.
+        """
+        async with self._ota_probe:
+            if self._ota_supported is None:
+                try:
+                    await self.async_get_ota()
+                except UpdateFailed as exc:
+                    _LOGGER.debug("OTA fetch failed at setup: error=%s", exc)
+                    return True
+        return self._ota_supported is not False
+
+    async def _async_refresh_ota(self) -> None:
+        # piggybacks on the telemetry poll like the plans
+        if self._ota_supported is False:
+            return
+        fetched = self._ota_fetched_at
+        if fetched is not None and datetime.now(UTC) - fetched < _OTA_FETCH_INTERVAL:
+            return
+        try:
+            await self.async_get_ota()
+        except UpdateFailed as exc:
+            _LOGGER.debug("OTA fetch failed: vin=%s, error=%s", self._vin[-6:], exc)
+
+    async def async_set_ota_auto_upgrade(
+        self, *, enabled: bool | None = None, at: str | None = None
+    ) -> None:
+        """Change night auto-upgrade, keeping whichever setting isn't given."""
+        current = self._ota
+        if enabled is None:
+            enabled = current.auto_upgrade_enabled if current else False
+        if at is None:
+            at = (current.auto_upgrade_time if current else "") or "2:00"
+
+        async def _handler(client: BydClient) -> None:
+            await client.set_ota_auto_upgrade(
+                self._vin, enabled=enabled, auto_upgrade_time=at
+            )
+
+        try:
+            await self._api.async_call(
+                _handler, vin=self._vin, command="set_ota_auto_upgrade"
+            )
+            await self.async_get_ota()
+        except UpdateFailed as exc:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="ota_write_failed",
+                translation_placeholders={"error": str(exc)},
+            ) from exc
+        finally:
+            self.async_update_listeners()
 
     async def _async_plan_write(
         self,

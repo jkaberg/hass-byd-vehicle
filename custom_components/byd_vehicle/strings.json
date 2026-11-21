@@ -787,6 +787,9 @@
       },
       "disable_polling": {
         "name": "Disable polling"
+      },
+      "ota_auto_upgrade": {
+        "name": "Night auto-upgrade"
       }
     },
     "climate": {
@@ -810,6 +813,11 @@
     "device_tracker": {
       "location": {
         "name": "Location"
+      }
+    },
+    "time": {
+      "ota_auto_upgrade_time": {
+        "name": "Night auto-upgrade time"
       }
     }
   },
@@ -858,6 +866,9 @@
     },
     "invalid_climate_settings": {
       "message": "Invalid climate settings: {error}"
+    },
+    "ota_write_failed": {
+      "message": "Changing night auto-upgrade failed: {error}"
     }
   }
 }

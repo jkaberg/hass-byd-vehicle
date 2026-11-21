@@ -17,6 +17,7 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.SWITCH,
     Platform.TIME,
+    Platform.UPDATE,
 ]
 
 CONF_BASE_URL = "base_url"
