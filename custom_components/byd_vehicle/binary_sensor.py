@@ -177,6 +177,14 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         # is_on=True means "problem" (unlocked), so invert. None propagates as-is.
         value_fn=lambda r: None if (v := r.is_locked) is None else not v,
     ),
+    # follows the A/C itself, also while a climate plan runs with the car
+    # off (pyBYD #20)
+    BydBinarySensorDescription(
+        key="ac_running",
+        source="realtime",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=lambda r: r.is_ac_running,
+    ),
     BydBinarySensorDescription(
         key="sentry_status",
         source="realtime",
