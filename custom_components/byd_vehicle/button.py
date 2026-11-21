@@ -62,6 +62,8 @@ class BydButtonDescription(ButtonEntityDescription):
     """Lambda returning the capability coroutine to execute."""
     capability_key: str
     """Normalized pyBYD capability flag name."""
+    supported_fn: Callable[[BydCar], bool] | None = None
+    """Extra check on the car, for gates ``capability_key`` can't see."""
 
 
 BUTTON_DESCRIPTIONS: tuple[BydButtonDescription, ...] = (
@@ -87,6 +89,8 @@ BUTTON_DESCRIPTIONS: tuple[BydButtonDescription, ...] = (
         key="open_windows",
         icon="mdi:window-open",
         capability_key="open_windows",
+        # also needs the window learn info, or the command hangs (#20)
+        supported_fn=lambda car: car.windows.open_available,
         car_command=lambda car: car.windows.open(),
     ),
     BydButtonDescription(
@@ -130,6 +134,11 @@ async def async_setup_entry(
         entities.append(BydFetchEnergyButton(coordinator, vin, vehicle))
         for description in BUTTON_DESCRIPTIONS:
             if not coordinator.capability_available(description.capability_key):
+                continue
+            car = coordinator.car
+            if description.supported_fn is not None and (
+                car is None or not description.supported_fn(car)
+            ):
                 continue
             entities.append(BydButton(coordinator, vin, vehicle, description))
 
