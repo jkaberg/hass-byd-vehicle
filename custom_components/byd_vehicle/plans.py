@@ -14,7 +14,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.util import dt as dt_util
 from pybyd.models.standby import (
     COMMAND_CLIMATE,
@@ -26,7 +26,21 @@ from pybyd.models.standby import (
     StandbySchedule,
 )
 
-from .const import DEFAULT_CLIMATE_DURATION, DEFAULT_CLIMATE_TEMP
+from .const import DEFAULT_CLIMATE_DURATION, DEFAULT_CLIMATE_TEMP, DOMAIN
+
+# the cloud refuses a once run sooner than this, and a daily or weekly
+# one this close is saved but skips today (#91)
+MIN_LEAD_TIME = datetime.timedelta(minutes=20)
+
+
+def invalid(key: str, **placeholders: Any) -> ServiceValidationError:
+    """A translated error for service input the user can fix."""
+    return ServiceValidationError(
+        translation_domain=DOMAIN,
+        translation_key=key,
+        translation_placeholders={k: str(v) for k, v in placeholders.items()},
+    )
+
 
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 REPEATS = ("off", "single", "every_day", "weekdays", "weekends", "custom")
@@ -87,6 +101,27 @@ def next_run(plan: StandbyPlan, now: datetime.datetime) -> datetime.datetime | N
     return None
 
 
+def skips_today(
+    schedule: StandbySchedule, zone: datetime.tzinfo, now: datetime.datetime
+) -> bool:
+    """Whether a daily or weekly schedule saved ``now`` misses today's run.
+
+    The cloud accepts it but skips a run less than ``MIN_LEAD_TIME`` away.
+    """
+    if schedule.repeat == "daily":
+        assert schedule.at is not None
+        hhmm = schedule.at.astimezone(zone).strftime("%H:%M")
+        days: tuple[int, ...] = tuple(range(7))
+    elif schedule.repeat == "weekly":
+        hhmm, days = schedule.start_time, schedule.weekly_days
+    else:
+        return False
+    local = now.astimezone(zone)
+    if local.weekday() not in days:
+        return False
+    return now < _at(local.date(), hhmm, zone) < now + MIN_LEAD_TIME
+
+
 def _start_time(schedule: StandbySchedule, zone: datetime.tzinfo) -> str | None:
     if schedule.repeat == "weekly":
         return schedule.start_time
@@ -141,8 +176,8 @@ def find_plan(plans: list[StandbyPlan], ref: str) -> StandbyPlan:
     if len(named) == 1:
         return named[0]
     if named:
-        raise HomeAssistantError(f"More than one climate plan is named {ref!r}")
-    raise HomeAssistantError(f"No climate plan with id or name {ref!r}")
+        raise invalid("plan_name_ambiguous", plan=ref)
+    raise invalid("plan_not_found", plan=ref)
 
 
 def default_plan(plans: list[StandbyPlan]) -> StandbyPlan | None:
@@ -159,9 +194,9 @@ def _hhmm(value: Any) -> str:
     try:
         hour, minute = int(parts[0]), int(parts[1])
     except (ValueError, IndexError) as exc:
-        raise HomeAssistantError(f"start_time must be HH:MM, got {value!r}") from exc
+        raise invalid("invalid_time", value=value) from exc
     if not (0 <= hour <= 23 and 0 <= minute <= 59):
-        raise HomeAssistantError(f"start_time must be HH:MM, got {value!r}")
+        raise invalid("invalid_time", value=value)
     return f"{hour:02d}:{minute:02d}"
 
 
@@ -171,7 +206,7 @@ def _date(value: Any) -> datetime.date:
     try:
         return datetime.date.fromisoformat(str(value))
     except ValueError as exc:
-        raise HomeAssistantError(f"date must be YYYY-MM-DD, got {value!r}") from exc
+        raise invalid("invalid_date", value=value) from exc
 
 
 def _next_at(
@@ -204,22 +239,22 @@ def schedule_from_call(
         current_repeat if current.repeat != "off" else "single"
     )
     if repeat not in REPEATS:
-        raise HomeAssistantError(f"Unknown repeat {repeat!r}")
+        raise invalid("unknown_repeat", repeat=repeat)
     if repeat == "off":
         return StandbySchedule.off()
 
     raw_time = data.get("start_time")
     hhmm = _hhmm(raw_time) if raw_time is not None else _start_time(current, zone)
     if hhmm is None:
-        raise HomeAssistantError("start_time is needed to schedule the plan")
+        raise invalid("start_time_required")
 
     if repeat == "single":
         if data.get("date") is not None:
             at = _at(_date(data["date"]), hhmm, zone)
         else:
             at = _next_at(hhmm, zone, now)
-        if at <= now:
-            raise HomeAssistantError("Pick a time in the future for the plan")
+        if at < now + MIN_LEAD_TIME:
+            raise invalid("plan_time_too_soon")
         return StandbySchedule.once(at)
     if repeat == "every_day":
         return StandbySchedule.daily(_next_at(hhmm, zone, now))
@@ -235,9 +270,9 @@ def schedule_from_call(
         try:
             days = [DAYS.index(str(day).lower()[:3]) for day in raw_days]
         except ValueError as exc:
-            raise HomeAssistantError(f"Unknown weekday in {raw_days!r}") from exc
+            raise invalid("unknown_weekday", value=raw_days) from exc
     if not days:
-        raise HomeAssistantError("weekdays must be set when repeat is custom")
+        raise invalid("weekdays_required")
     return StandbySchedule.weekly(hhmm, days)
 
 
@@ -269,7 +304,7 @@ def commands_from_call(
             commands.append(existing)
     elif steering:
         if not supports("steering_wheel_heat"):
-            raise HomeAssistantError("This car has no steering wheel heat")
+            raise invalid("feature_not_supported", feature="steering wheel heat")
         commands.append(StandbyPlanCommand.steering_wheel())
     return commands
 
@@ -298,7 +333,7 @@ def _climate_command(
             temp_offset=temp_offset,
         )
     except ValueError as exc:
-        raise HomeAssistantError(str(exc)) from exc
+        raise invalid("invalid_climate_settings", error=exc) from exc
     if existing is None:
         return built
     # only change what we model, keep any other A/C keys as they are
@@ -320,7 +355,7 @@ def _seats_command(
     for field, (seat_field, capability) in SEAT_FIELDS.items():
         given = data.get(field)
         if given is not None and not supports(capability):
-            raise HomeAssistantError(f"This car has no {field.replace('_', ' ')}")
+            raise invalid("feature_not_supported", feature=field.replace("_", " "))
         if given is not None:
             values[seat_field] = given
         elif current is not None and getattr(current, seat_field) is not None:

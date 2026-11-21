@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import datetime
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import pytest
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from pybyd.models.standby import StandbyPlan, StandbyPlanList, StandbySchedule
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -21,6 +22,7 @@ from custom_components.byd_vehicle.plans import (  # noqa: E402
     next_run,
     plan_summary,
     schedule_from_call,
+    skips_today,
 )
 
 MADRID = ZoneInfo("Europe/Madrid")
@@ -211,8 +213,8 @@ def test_schedule_untouched() -> None:
         ),
         # start_time alone on create means a single run
         (
-            {"start_time": "16:00"},
-            StandbySchedule.once(datetime.datetime(2026, 11, 18, 16, 0, tzinfo=MADRID)),
+            {"start_time": "16:05"},
+            StandbySchedule.once(datetime.datetime(2026, 11, 18, 16, 5, tzinfo=MADRID)),
         ),
     ],
 )
@@ -245,8 +247,46 @@ def test_schedule_keeps_current_values() -> None:
     ],
 )
 def test_schedule_rejects(data: dict[str, Any]) -> None:
-    with pytest.raises(HomeAssistantError):
+    with pytest.raises(ServiceValidationError):
         _schedule(data)
+
+
+def test_single_run_needs_20_min_lead() -> None:
+    # 18 min ahead: the cloud answers 6111, so refuse it up front (#91)
+    with pytest.raises(ServiceValidationError) as err:
+        _schedule({"repeat": "single", "start_time": "16:00"})
+    assert err.value.translation_key == "plan_time_too_soon"
+
+
+@pytest.mark.parametrize(
+    ("schedule", "skipped"),
+    [
+        # 18 min ahead today: saved, but today is skipped (#91)
+        (StandbySchedule.daily(NOW.replace(hour=16, minute=0)), True),
+        (StandbySchedule.daily(NOW.replace(hour=16, minute=5)), False),
+        (StandbySchedule.weekly("16:00", [2]), True),
+        # not a Wednesday run, so nothing to skip today
+        (StandbySchedule.weekly("16:00", [3]), False),
+        # already passed today
+        (StandbySchedule.weekly("15:00", [2]), False),
+        (StandbySchedule.once(NOW.replace(hour=16, minute=0)), False),
+        (StandbySchedule.off(), False),
+    ],
+)
+def test_skips_today(schedule: StandbySchedule, skipped: bool) -> None:
+    assert skips_today(schedule, MADRID, NOW) is skipped
+
+
+def test_exception_keys_are_translated() -> None:
+    root = Path(__file__).resolve().parents[1] / "custom_components" / "byd_vehicle"
+    source = "".join(
+        (root / name).read_text() for name in ("plans.py", "__init__.py")
+    ) + (root / "coordinator.py").read_text()
+    used = set(re.findall(r'invalid\(\s*"(\w+)"', source))
+    used |= set(re.findall(r'translation_key="(\w+)"', source))
+    for name in ("strings.json", "translations/en.json"):
+        exceptions = json.loads((root / name).read_text())["exceptions"]
+        assert used <= exceptions.keys(), used - exceptions.keys()
 
 
 # --- commands ---------------------------------------------------------------

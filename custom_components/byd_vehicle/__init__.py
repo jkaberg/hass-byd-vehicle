@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
+from datetime import datetime, tzinfo
 from typing import Any
 
 from homeassistant.components import persistent_notification
@@ -54,9 +55,11 @@ from .plans import (
     commands_from_call,
     default_plan,
     find_plan,
+    invalid,
     plan_summary,
     plan_zone,
     schedule_from_call,
+    skips_today,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -558,16 +561,20 @@ async def _plan_target(
     """The one vehicle a plan service acts on, with its current plans."""
     targets = _resolve_vins_from_call(hass, call)
     if len(targets) != 1:
-        raise HomeAssistantError("Climate plan services take one vehicle at a time")
+        raise invalid("one_vehicle_only")
     coordinator, _ = _get_coordinators(hass, *targets[0])
     plans = coordinator.standby_plans
     if plans is None:
         try:
             plans = await coordinator.async_get_standby_plans()
         except UpdateFailed as exc:
-            raise HomeAssistantError(f"Fetching climate plans failed: {exc}") from exc
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="plan_fetch_failed",
+                translation_placeholders={"error": str(exc)},
+            ) from exc
     if plans is None:
-        raise HomeAssistantError("Climate plans aren't available for this vehicle")
+        raise invalid("plans_not_supported")
     return coordinator, list(plans.plans)
 
 
@@ -584,7 +591,21 @@ def _async_register_plan_services(hass: HomeAssistant) -> None:
             ]
         }
 
-    async def _handle_create(call: ServiceCall) -> None:
+    def _saved(
+        call: ServiceCall,
+        schedule: StandbySchedule | None,
+        zone: tzinfo,
+        now: datetime,
+    ) -> ServiceResponse:
+        skipped = schedule is not None and skips_today(schedule, zone, now)
+        if skipped:
+            _LOGGER.warning(
+                "Climate plan saved, but it skips today: the run is less than "
+                "20 min away"
+            )
+        return {"skips_today": skipped} if call.return_response else None
+
+    async def _handle_create(call: ServiceCall) -> ServiceResponse:
         coordinator, plans = await _plan_target(hass, call)
         template = default_plan(plans)
         commands = commands_from_call(
@@ -593,14 +614,14 @@ def _async_register_plan_services(hass: HomeAssistant) -> None:
             temp_offset=coordinator.temp_offset,
             supports=coordinator.capability_available,
         )
-        schedule = schedule_from_call(
-            call.data, current=None, zone=plan_zone(template), now=dt_util.now()
-        )
+        zone, now = plan_zone(template), dt_util.now()
+        schedule = schedule_from_call(call.data, current=None, zone=zone, now=now)
         await coordinator.async_create_standby_plan(
             call.data["name"], commands, schedule or StandbySchedule.off()
         )
+        return _saved(call, schedule, zone, now)
 
-    async def _handle_update(call: ServiceCall) -> None:
+    async def _handle_update(call: ServiceCall) -> ServiceResponse:
         coordinator, plans = await _plan_target(hass, call)
         plan = find_plan(plans, call.data["plan"])
         commands = commands_from_call(
@@ -609,11 +630,9 @@ def _async_register_plan_services(hass: HomeAssistant) -> None:
             temp_offset=coordinator.temp_offset,
             supports=coordinator.capability_available,
         )
+        zone, now = plan_zone(plan), dt_util.now()
         schedule = schedule_from_call(
-            call.data,
-            current=plan.schedule,
-            zone=plan_zone(plan),
-            now=dt_util.now(),
+            call.data, current=plan.schedule, zone=zone, now=now
         )
         updated = plan.model_copy(
             update={
@@ -622,6 +641,7 @@ def _async_register_plan_services(hass: HomeAssistant) -> None:
             }
         )
         await coordinator.async_save_standby_plan(updated, schedule)
+        return _saved(call, schedule, zone, now)
 
     async def _handle_delete(call: ServiceCall) -> None:
         coordinator, plans = await _plan_target(hass, call)
@@ -647,9 +667,14 @@ def _async_register_plan_services(hass: HomeAssistant) -> None:
         _handle_list,
         supports_response=SupportsResponse.ONLY,
     )
-    for name, handler in (
+    for name, saver in (
         (_SERVICE_CREATE_CLIMATE_PLAN, _handle_create),
         (_SERVICE_UPDATE_CLIMATE_PLAN, _handle_update),
+    ):
+        hass.services.async_register(
+            DOMAIN, name, saver, supports_response=SupportsResponse.OPTIONAL
+        )
+    for name, handler in (
         (_SERVICE_DELETE_CLIMATE_PLAN, _handle_delete),
         (_SERVICE_RUN_CLIMATE_PLAN, _handle_run),
         (_SERVICE_SET_DEFAULT_CLIMATE_PLAN, _handle_set_default),

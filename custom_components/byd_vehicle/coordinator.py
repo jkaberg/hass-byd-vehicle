@@ -14,7 +14,11 @@ from typing import Any
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    HomeAssistantError,
+    ServiceValidationError,
+)
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import (
@@ -33,6 +37,7 @@ from pybyd import (
     BydRateLimitError,
     BydRemoteControlError,
     BydSessionExpiredError,
+    BydStandbyScheduleError,
     BydTransportError,
     CommandAckEvent,
     CommandLifecycleEvent,
@@ -508,6 +513,9 @@ class BydApi:
             raise UpdateFailed(str(exc)) from exc
         except BydAuthenticationError as exc:
             raise ConfigEntryAuthFailed(str(exc)) from exc
+        except BydStandbyScheduleError:
+            # input the user can fix, the plan services turn it into an error
+            raise
         except BydApiError as exc:
             raise UpdateFailed(str(exc)) from exc
         except Exception as exc:  # noqa: BLE001
@@ -1141,8 +1149,16 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
             result: StandbyPlanList = await self._api.async_call(
                 call, vin=self._vin, command=command
             )
+        except BydStandbyScheduleError as exc:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="plan_time_too_soon"
+            ) from exc
         except UpdateFailed as exc:
-            raise HomeAssistantError(f"Changing climate plan failed: {exc}") from exc
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="plan_write_failed",
+                translation_placeholders={"error": str(exc)},
+            ) from exc
         self._standby_plans = result
         self._standby_plans_fetched_at = datetime.now(UTC)
         self.async_update_listeners()

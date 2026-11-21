@@ -809,5 +809,52 @@
         "name": "Location"
       }
     }
+  },
+  "exceptions": {
+    "one_vehicle_only": {
+      "message": "Climate plan actions take one vehicle at a time."
+    },
+    "plans_not_supported": {
+      "message": "Climate plans aren't available for this vehicle."
+    },
+    "plan_fetch_failed": {
+      "message": "Fetching climate plans failed: {error}"
+    },
+    "plan_write_failed": {
+      "message": "Changing the climate plan failed: {error}"
+    },
+    "plan_not_found": {
+      "message": "No climate plan with id or name \"{plan}\"."
+    },
+    "plan_name_ambiguous": {
+      "message": "More than one climate plan is named \"{plan}\", use its id instead."
+    },
+    "invalid_time": {
+      "message": "Time must be HH:MM, got \"{value}\"."
+    },
+    "invalid_date": {
+      "message": "Date must be YYYY-MM-DD, got \"{value}\"."
+    },
+    "unknown_repeat": {
+      "message": "Unknown repeat \"{repeat}\"."
+    },
+    "start_time_required": {
+      "message": "A start time is needed to schedule the plan."
+    },
+    "plan_time_too_soon": {
+      "message": "A single run has to be at least 20 minutes from now and within the next 30 days."
+    },
+    "unknown_weekday": {
+      "message": "Unknown weekday in \"{value}\"."
+    },
+    "weekdays_required": {
+      "message": "Weekdays must be set when repeat is custom."
+    },
+    "feature_not_supported": {
+      "message": "This car has no {feature}."
+    },
+    "invalid_climate_settings": {
+      "message": "Invalid climate settings: {error}"
+    }
   }
 }
