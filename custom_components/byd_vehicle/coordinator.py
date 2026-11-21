@@ -830,7 +830,16 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
             return True
         if snapshot is not None and snapshot.hvac is None:
             return True
-        return self._is_vehicle_on_from_snapshot(snapshot) is True
+        if self._is_vehicle_on_from_snapshot(snapshot) is True:
+            return True
+        if snapshot is None:
+            return False
+        # a climate plan or remote start runs the A/C with the car off
+        # (pyBYD #20, #91), and only realtime's airRunState shows it
+        if snapshot.realtime is not None and snapshot.realtime.is_ac_running:
+            return True
+        # once more after it stops, so the climate entity sees it off
+        return snapshot.hvac is not None and snapshot.hvac.is_ac_on
 
     async def _async_update_data(self) -> VehicleSnapshot:
         """Fetch telemetry + conditional HVAC and return car.state."""

@@ -669,6 +669,9 @@
       },
       "ac_compressor": {
         "name": "A/C compressor"
+      },
+      "ac_running": {
+        "name": "A/C"
       }
     },
     "button": {
