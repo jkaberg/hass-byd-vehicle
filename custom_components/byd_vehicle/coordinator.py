@@ -76,6 +76,9 @@ _LOGGER = logging.getLogger(__name__)
 _HA_EVENT_COMMAND_LIFECYCLE: str = f"{DOMAIN}_command_lifecycle"
 
 _AUTH_ERRORS = (BydAuthenticationError, BydSessionExpiredError)
+# BYD cloud rejects GPS calls with this code while location access is off in
+# the BYD app's Privacy settings. A fresh login alone does not clear it.
+_LOCATION_PERMISSION_CODE = "8002"
 # The inbox is account-wide, so one fetch serves every vehicle on the entry.
 _INBOX_FETCH_INTERVAL = timedelta(minutes=15)
 _PLAN_FETCH_INTERVAL = timedelta(minutes=30)
@@ -1588,6 +1591,9 @@ class BydGpsUpdateCoordinator(_ReschedulingCoordinator):
         self._fixed_interval = timedelta(seconds=poll_interval)
         self._polling_enabled = True
         self._force_next_refresh = False
+        # True while GPS keeps failing with 8002, so the client is reset only
+        # once per streak instead of on every poll.
+        self._location_denied = False
 
     @property
     def polling_enabled(self) -> bool:
@@ -1688,12 +1694,27 @@ class BydGpsUpdateCoordinator(_ReschedulingCoordinator):
         except _AUTH_ERRORS:
             raise
         except BydDataUnavailableError:
+            self._location_denied = False
             _LOGGER.debug(
                 "GPS data unavailable (vehicle may lack signal): vin=%s",
                 self._vin,
             )
         except _RECOVERABLE_ERRORS as exc:
-            _LOGGER.warning("GPS fetch failed: vin=%s, error=%s", self._vin, exc)
+            if str(getattr(exc, "code", "")) != _LOCATION_PERMISSION_CODE:
+                _LOGGER.warning("GPS fetch failed: vin=%s, error=%s", self._vin, exc)
+            elif not self._location_denied:
+                self._location_denied = True
+                _LOGGER.warning(
+                    "GPS fetch denied by BYD (code 8002): vin=%s. Allow location "
+                    "access under Privacy in the BYD app; GPS will recover on "
+                    "its own once it is enabled",
+                    self._vin,
+                )
+                await self._api._invalidate_client()
+            else:
+                _LOGGER.debug("GPS still denied by BYD (8002): vin=%s", self._vin)
+        else:
+            self._location_denied = False
 
         snapshot = car.state
         if snapshot.gps is None:
