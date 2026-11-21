@@ -93,6 +93,186 @@
           "description": "Whether the schedule is active."
         }
       }
+    },
+    "list_climate_plans": {
+      "name": "List climate plans",
+      "description": "Return the vehicle's climate plans with their schedule and settings.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        }
+      }
+    },
+    "create_climate_plan": {
+      "name": "Create climate plan",
+      "description": "Create a climate plan. Settings left out are copied from the default plan.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Name of the new plan."
+        },
+        "repeat": {
+          "name": "Repeat",
+          "description": "How often the plan runs: off (not scheduled), single (once), every day, weekdays, weekends, or custom weekdays."
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "Time of day the plan starts, in HH:MM (24-hour)."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Day of a single run. Defaults to the next time the start time comes round."
+        },
+        "weekdays": {
+          "name": "Weekdays",
+          "description": "Which weekdays the plan runs on. Only used when Repeat is 'custom'."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "A/C temperature, within the car's range."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "How long the A/C runs, 10 to 30 minutes."
+        },
+        "recirculation": {
+          "name": "Recirculation",
+          "description": "Recirculate the cabin air instead of drawing in outside air."
+        },
+        "driver_seat_heat": {
+          "name": "Driver seat heating",
+          "description": "Heat the driver seat. Plans only switch seats on or off."
+        },
+        "driver_seat_ventilation": {
+          "name": "Driver seat ventilation",
+          "description": "Ventilate the driver seat. Plans only switch seats on or off."
+        },
+        "passenger_seat_heat": {
+          "name": "Passenger seat heating",
+          "description": "Heat the passenger seat. Plans only switch seats on or off."
+        },
+        "passenger_seat_ventilation": {
+          "name": "Passenger seat ventilation",
+          "description": "Ventilate the passenger seat. Plans only switch seats on or off."
+        },
+        "steering_wheel_heat": {
+          "name": "Steering wheel heating",
+          "description": "Whether the plan heats the steering wheel."
+        }
+      }
+    },
+    "update_climate_plan": {
+      "name": "Update climate plan",
+      "description": "Change a climate plan. Fields left out keep their current value.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        },
+        "plan": {
+          "name": "Plan",
+          "description": "Plan name as shown in the BYD app, eg 'Work'. If two plans share a name, use the id: find it under 'plans' in the attributes of the 'Next climate plan' sensor, or run 'List climate plans'."
+        },
+        "name": {
+          "name": "Name",
+          "description": "New name for the plan."
+        },
+        "repeat": {
+          "name": "Repeat",
+          "description": "How often the plan runs: off (not scheduled), single (once), every day, weekdays, weekends, or custom weekdays."
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "Time of day the plan starts, in HH:MM (24-hour)."
+        },
+        "date": {
+          "name": "Date",
+          "description": "Day of a single run. Defaults to the next time the start time comes round."
+        },
+        "weekdays": {
+          "name": "Weekdays",
+          "description": "Which weekdays the plan runs on. Only used when Repeat is 'custom'."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "A/C temperature, within the car's range."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "How long the A/C runs, 10 to 30 minutes."
+        },
+        "recirculation": {
+          "name": "Recirculation",
+          "description": "Recirculate the cabin air instead of drawing in outside air."
+        },
+        "driver_seat_heat": {
+          "name": "Driver seat heating",
+          "description": "Heat the driver seat. Plans only switch seats on or off."
+        },
+        "driver_seat_ventilation": {
+          "name": "Driver seat ventilation",
+          "description": "Ventilate the driver seat. Plans only switch seats on or off."
+        },
+        "passenger_seat_heat": {
+          "name": "Passenger seat heating",
+          "description": "Heat the passenger seat. Plans only switch seats on or off."
+        },
+        "passenger_seat_ventilation": {
+          "name": "Passenger seat ventilation",
+          "description": "Ventilate the passenger seat. Plans only switch seats on or off."
+        },
+        "steering_wheel_heat": {
+          "name": "Steering wheel heating",
+          "description": "Whether the plan heats the steering wheel."
+        }
+      }
+    },
+    "delete_climate_plan": {
+      "name": "Delete climate plan",
+      "description": "Delete a climate plan. The preset plan can't be deleted, so it is unscheduled instead.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        },
+        "plan": {
+          "name": "Plan",
+          "description": "Plan name as shown in the BYD app, eg 'Work'. If two plans share a name, use the id: find it under 'plans' in the attributes of the 'Next climate plan' sensor, or run 'List climate plans'."
+        }
+      }
+    },
+    "run_climate_plan": {
+      "name": "Run climate plan",
+      "description": "Run a climate plan now. Its schedule is kept.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        },
+        "plan": {
+          "name": "Plan",
+          "description": "Plan name as shown in the BYD app, eg 'Work'. If two plans share a name, use the id: find it under 'plans' in the attributes of the 'Next climate plan' sensor, or run 'List climate plans'."
+        }
+      }
+    },
+    "set_default_climate_plan": {
+      "name": "Set default climate plan",
+      "description": "Make a climate plan the default.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The BYD vehicle the plan belongs to."
+        },
+        "plan": {
+          "name": "Plan",
+          "description": "Plan name as shown in the BYD app, eg 'Work'. If two plans share a name, use the id: find it under 'plans' in the attributes of the 'Next climate plan' sensor, or run 'List climate plans'."
+        }
+      }
     }
   },
   "config": {
@@ -352,6 +532,9 @@
       },
       "latest_notification": {
         "name": "Latest notification"
+      },
+      "next_climate_plan": {
+        "name": "Next climate plan"
       }
     },
     "binary_sensor": {
@@ -642,6 +825,53 @@
       "location": {
         "name": "Location"
       }
+    }
+  },
+  "exceptions": {
+    "one_vehicle_only": {
+      "message": "Climate plan actions take one vehicle at a time."
+    },
+    "plans_not_supported": {
+      "message": "Climate plans aren't available for this vehicle."
+    },
+    "plan_fetch_failed": {
+      "message": "Fetching climate plans failed: {error}"
+    },
+    "plan_write_failed": {
+      "message": "Changing the climate plan failed: {error}"
+    },
+    "plan_not_found": {
+      "message": "No climate plan with id or name \"{plan}\"."
+    },
+    "plan_name_ambiguous": {
+      "message": "More than one climate plan is named \"{plan}\", use its id instead."
+    },
+    "invalid_time": {
+      "message": "Time must be HH:MM, got \"{value}\"."
+    },
+    "invalid_date": {
+      "message": "Date must be YYYY-MM-DD, got \"{value}\"."
+    },
+    "unknown_repeat": {
+      "message": "Unknown repeat \"{repeat}\"."
+    },
+    "start_time_required": {
+      "message": "A start time is needed to schedule the plan."
+    },
+    "plan_time_too_soon": {
+      "message": "A single run has to be at least 20 minutes from now and within the next 30 days."
+    },
+    "unknown_weekday": {
+      "message": "Unknown weekday in \"{value}\"."
+    },
+    "weekdays_required": {
+      "message": "Weekdays must be set when repeat is custom."
+    },
+    "feature_not_supported": {
+      "message": "This car has no {feature}."
+    },
+    "invalid_climate_settings": {
+      "message": "Invalid climate settings: {error}"
     }
   }
 }

@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from pybyd.models.vehicle import Vehicle
 
-from .const import DOMAIN
+from .const import DEFAULT_CLIMATE_TEMP, DOMAIN
 from .coordinator import BydDataUpdateCoordinator
 from .entity import BydActionEntity, BydVehicleEntity
 
@@ -122,7 +122,7 @@ class BydCarOnSwitch(BydActionEntity, SwitchEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "car_on"
     _attr_icon = "mdi:car"
-    _DEFAULT_TEMP_C = 21.0
+    _DEFAULT_TEMP_C = DEFAULT_CLIMATE_TEMP
     _DEFAULT_DURATION = 20
 
     def __init__(
