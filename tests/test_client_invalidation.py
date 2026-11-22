@@ -110,3 +110,21 @@ def test_gps_8002_resets_client_once_per_streak(caplog: Any) -> None:
     poll(None)
     poll(_LocationDenied())
     assert api.resets == 2
+
+
+def test_capabilities_survive_client_invalidation() -> None:
+    """GPS 8002 at setup drops the car before platforms gate on it (#232)."""
+    from custom_components.byd_vehicle.coordinator import BydDataUpdateCoordinator
+
+    coordinator: Any = object.__new__(BydDataUpdateCoordinator)
+    coordinator._vehicle = SimpleNamespace(is_shared=False)
+    caps = SimpleNamespace(climate=True, lock=True, start_charge=False)
+    coordinator._car = SimpleNamespace(capabilities=caps)
+    coordinator._capabilities = caps
+
+    coordinator._car = None  # what _invalidate_client does
+
+    assert coordinator.capability_available("climate")
+    assert coordinator.capability_available("lock")
+    assert not coordinator.capability_supported("start_charge")
+    assert coordinator.capability_supported("tpms")
