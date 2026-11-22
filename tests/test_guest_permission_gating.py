@@ -119,6 +119,9 @@ class _FakeCoord:
     def guest_has_permission(self, code: str) -> bool:
         return code in self._perms
 
+    async def async_maintenance_supported(self) -> bool:
+        return False
+
 
 @pytest.mark.asyncio
 async def test_button_number_and_sensor_respect_guest_location_and_charging(

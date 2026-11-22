@@ -535,6 +535,12 @@
       },
       "next_climate_plan": {
         "name": "Next climate plan"
+      },
+      "last_service_mileage": {
+        "name": "Last service mileage"
+      },
+      "last_service_date": {
+        "name": "Last service date"
       }
     },
     "binary_sensor": {

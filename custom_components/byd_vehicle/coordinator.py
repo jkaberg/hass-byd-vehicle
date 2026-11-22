@@ -45,6 +45,7 @@ from pybyd import (
     VehicleSnapshot,
 )
 from pybyd.config import BydConfig, DeviceProfile
+from pybyd.models.maintenance import MaintenanceHistory
 from pybyd.models.message_center import VehicleMsgItemInfo
 from pybyd.models.ota import OtaUpgradeInfo
 from pybyd.models.standby import (
@@ -135,6 +136,7 @@ _INBOX_FETCH_INTERVAL = timedelta(minutes=15)
 _PLAN_FETCH_INTERVAL = timedelta(minutes=30)
 # firmware versions change a few times a year
 _OTA_FETCH_INTERVAL = timedelta(hours=6)
+_MAINTENANCE_FETCH_INTERVAL = timedelta(hours=6)
 _INBOX_STORE_VERSION = 1
 _RECOVERABLE_ERRORS = (
     BydApiError,
@@ -708,6 +710,10 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         self._ota_supported: bool | None = None
         self._ota_fetched_at: datetime | None = None
         self._ota_probe = asyncio.Lock()
+        self._maintenance: MaintenanceHistory | None = None
+        self._maintenance_supported: bool | None = None
+        self._maintenance_fetched_at: datetime | None = None
+        self._maintenance_probe = asyncio.Lock()
         self._standby_plans_fetched_at: datetime | None = None
         self._cancel_hvac_final_retry: CALLBACK_TYPE | None = None
         self.update_pending: bool = False
@@ -1022,6 +1028,7 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
 
         await self._async_refresh_standby_plans()
         await self._async_refresh_ota()
+        await self._async_refresh_maintenance()
 
         snapshot = car.state
         self._schedule_hvac_final_reconcile_if_needed(previous_snapshot, snapshot)
@@ -1247,6 +1254,60 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
             await self.async_get_standby_plans()
         except UpdateFailed as exc:
             _LOGGER.debug("Plan fetch failed: vin=%s, error=%s", self._vin[-6:], exc)
+
+    @property
+    def maintenance(self) -> MaintenanceHistory | None:
+        """Last fetched service history, ``None`` before the first fetch."""
+        return self._maintenance
+
+    async def async_get_maintenance(self) -> MaintenanceHistory | None:
+        """Fetch the service history and cache it.
+
+        Returns ``None`` when the cloud doesn't offer maintenance for this car.
+        Other failures raise ``UpdateFailed``.
+        """
+
+        async def _handler(client: BydClient) -> MaintenanceHistory | None:
+            try:
+                return await client.get_maintenance_history(self._vin)
+            except BydEndpointNotSupportedError:
+                return None
+
+        result: MaintenanceHistory | None = await self._api.async_call(
+            _handler, vin=self._vin, command="get_maintenance_history"
+        )
+        self._maintenance_fetched_at = datetime.now(UTC)
+        self._maintenance_supported = result is not None
+        if result is not None:
+            self._maintenance = result
+        return result
+
+    async def async_maintenance_supported(self) -> bool:
+        """Whether to add maintenance entities, probing the cloud once at setup."""
+        async with self._maintenance_probe:
+            if self._maintenance_supported is None:
+                try:
+                    await self.async_get_maintenance()
+                except UpdateFailed as exc:
+                    _LOGGER.debug("Maintenance fetch failed at setup: error=%s", exc)
+                    return True
+        return self._maintenance_supported is not False
+
+    async def _async_refresh_maintenance(self) -> None:
+        if self._maintenance_supported is False:
+            return
+        fetched = self._maintenance_fetched_at
+        if (
+            fetched is not None
+            and datetime.now(UTC) - fetched < _MAINTENANCE_FETCH_INTERVAL
+        ):
+            return
+        try:
+            await self.async_get_maintenance()
+        except UpdateFailed as exc:
+            _LOGGER.debug(
+                "Maintenance fetch failed: vin=%s, error=%s", self._vin[-6:], exc
+            )
 
     @property
     def ota(self) -> OtaUpgradeInfo | None:

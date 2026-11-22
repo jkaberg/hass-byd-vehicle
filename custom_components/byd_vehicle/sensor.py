@@ -6,7 +6,7 @@ import logging
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -1251,6 +1251,75 @@ class BydNextClimatePlanSensor(BydVehicleEntity, SensorEntity):
         return attributes
 
 
+class BydLastServiceMileageSensor(BydVehicleEntity, SensorEntity):
+    """Odometer reading at the most recent workshop visit."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "last_service_mileage"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.DISTANCE
+    _attr_native_unit_of_measurement = UnitOfLength.KILOMETERS
+    _attr_icon = "mdi:wrench-clock"
+
+    def __init__(self, coordinator: BydDataUpdateCoordinator) -> None:
+        self._vin = coordinator.vin
+        self._vehicle = coordinator.vehicle
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{self._vin}_sensor_last_service_mileage"
+
+    @property
+    def available(self) -> bool:
+        """Available once the service history was fetched."""
+        return super().available and self.coordinator.maintenance is not None
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the mileage of the latest service in km."""
+        history = self.coordinator.maintenance
+        latest = history.latest if history is not None else None
+        return latest.mileage if latest is not None else None
+
+
+class BydLastServiceDateSensor(BydVehicleEntity, SensorEntity):
+    """Date of the most recent workshop visit."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "last_service_date"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.DATE
+    _attr_icon = "mdi:calendar-wrench"
+
+    def __init__(self, coordinator: BydDataUpdateCoordinator) -> None:
+        self._vin = coordinator.vin
+        self._vehicle = coordinator.vehicle
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{self._vin}_sensor_last_service_date"
+
+    @property
+    def available(self) -> bool:
+        """Available once the service history was fetched."""
+        return super().available and self.coordinator.maintenance is not None
+
+    @property
+    def native_value(self) -> date | None:
+        """Return the date of the latest service."""
+        history = self.coordinator.maintenance
+        latest = history.latest if history is not None else None
+        if latest is None or latest.service_date is None:
+            return None
+        return dt_util.as_local(latest.service_date).date()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the workshop and visit count."""
+        history = self.coordinator.maintenance
+        latest = history.latest if history is not None else None
+        return {
+            "shop_name": latest.shop_name if latest is not None else None,
+            "service_count": len(history.records) if history is not None else 0,
+        }
+
+
 async def _plans_supported(coordinator: BydDataUpdateCoordinator) -> bool:
     guest_check = getattr(coordinator, "guest_has_permission", None)
     if callable(guest_check) and not guest_check("21"):
@@ -1279,6 +1348,9 @@ async def async_setup_entry(
             entities.append(BydLatestNotificationSensor(coordinator))
         if await _plans_supported(coordinator):
             entities.append(BydNextClimatePlanSensor(coordinator))
+        if await coordinator.async_maintenance_supported():
+            entities.append(BydLastServiceMileageSensor(coordinator))
+            entities.append(BydLastServiceDateSensor(coordinator))
         vehicle = coordinator.vehicle
         for description in SENSOR_DESCRIPTIONS:
             if (
