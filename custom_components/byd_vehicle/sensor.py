@@ -1252,6 +1252,9 @@ class BydNextClimatePlanSensor(BydVehicleEntity, SensorEntity):
 
 
 async def _plans_supported(coordinator: BydDataUpdateCoordinator) -> bool:
+    guest_check = getattr(coordinator, "guest_has_permission", None)
+    if callable(guest_check) and not guest_check("21"):
+        return False
     try:
         return await coordinator.async_get_standby_plans() is not None
     except UpdateFailed as exc:
@@ -1285,7 +1288,9 @@ async def async_setup_entry(
                 continue
             if description.key == "gps_last_updated":
                 gps_coordinator = gps_coordinators.get(vin)
-                if gps_coordinator is not None:
+                if gps_coordinator is not None and coordinator.capability_available(
+                    "location"
+                ):
                     entities.append(
                         BydSensor(gps_coordinator, vin, vehicle, description)
                     )
