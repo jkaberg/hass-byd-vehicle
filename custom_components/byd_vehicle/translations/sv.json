@@ -291,9 +291,6 @@
       "esp": {
         "name": "Elektronisk stabilitet"
       },
-      "pwr": {
-        "name": "Strömvarning"
-      },
       "power_system": {
         "name": "Kraftsystem"
       },

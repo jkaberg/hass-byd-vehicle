@@ -291,9 +291,6 @@
       "esp": {
         "name": "Elektroninen ajonvakautus"
       },
-      "pwr": {
-        "name": "Tehovaroitus"
-      },
       "power_system": {
         "name": "Voimansiirtojärjestelmä"
       },

@@ -348,16 +348,6 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         value_fn=_sentinel_int_on("esp"),
     ),
     BydBinarySensorDescription(
-        key="pwr",
-        source="realtime",
-        capability_key="health_battery",
-        device_class=BinarySensorDeviceClass.PROBLEM,
-        icon="mdi:flash-alert",
-        entity_registry_enabled_default=False,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_sentinel_int_on("pwr"),
-    ),
-    BydBinarySensorDescription(
         key="power_system",
         source="realtime",
         capability_key="health_powertrain",
@@ -466,11 +456,11 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BydBinarySensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda r: r.is_vehicle_on,
     ),
-    # A/C compressor, separate from the overall climate state (pyBYD#64)
+    # A/C button setting (on = A/C, off = fan only), kept while the climate
+    # is off; whether climate runs is ac_running (pyBYD#20)
     BydBinarySensorDescription(
         key="ac_compressor",
         source="hvac",
-        device_class=BinarySensorDeviceClass.RUNNING,
         icon="mdi:snowflake",
         value_fn=lambda h: h.is_compressor_on if h is not None else None,
     ),

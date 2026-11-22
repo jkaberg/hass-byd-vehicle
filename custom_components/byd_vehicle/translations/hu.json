@@ -291,9 +291,6 @@
       "esp": {
         "name": "Elektronikus stabilitás"
       },
-      "pwr": {
-        "name": "Tápfeszültség figyelmeztetés"
-      },
       "power_system": {
         "name": "Energiaellátó rendszer"
       },

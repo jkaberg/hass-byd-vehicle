@@ -890,10 +890,14 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
     def capability_supported(self, capability_key: str) -> bool:
         """Return True unless pyBYD explicitly marks *capability_key* False.
 
-        Used for read-only sensors so vehicles without ``latest_config``
-        metadata keep their sensors, while vehicles whose ``latest_config``
-        explicitly omits a capability skip unsupported entities.
+        Used for read-only sensors and settings so vehicles without
+        ``latest_config`` metadata (or a failed fetch at startup) keep their
+        entities, while vehicles whose ``latest_config`` explicitly omits a
+        capability, or a guest without the permission, skip them.
         """
+        req_perm = _CAPABILITY_GUEST_PERMISSION.get(capability_key)
+        if req_perm is not None and not self.guest_has_permission(req_perm):
+            return False
         car = getattr(self, "_car", None)
         if car is None:
             return True
@@ -963,6 +967,9 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
                     self._vin,
                 )
                 self._realtime_endpoint_unsupported = True
+        except BydDataUnavailableError as exc:
+            # asleep car answering with an all-zero placeholder; last values stay
+            _LOGGER.debug("Realtime not ready: vin=%s, error=%s", self._vin, exc)
         except _RECOVERABLE_ERRORS as exc:
             _LOGGER.warning(
                 "Realtime fetch failed: vin=%s, error=%s",

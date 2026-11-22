@@ -112,6 +112,10 @@ class _FakeCoord:
     def capability_available(self, key: str) -> bool:
         return key in self._available
 
+    def capability_supported(self, key: str) -> bool:
+        # a guest without the permission reads as unsupported either way
+        return key in self._available
+
     def guest_has_permission(self, code: str) -> bool:
         return code in self._perms
 

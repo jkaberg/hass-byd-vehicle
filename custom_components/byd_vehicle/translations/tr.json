@@ -291,9 +291,6 @@
       "esp": {
         "name": "Elektronik stabilite"
       },
-      "pwr": {
-        "name": "Güç uyarısı"
-      },
       "power_system": {
         "name": "Güç sistemi"
       },
