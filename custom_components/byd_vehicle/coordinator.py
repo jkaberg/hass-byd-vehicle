@@ -692,6 +692,9 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         self._polling_enabled = True
         self._force_next_refresh = False
         self._car: BydCar | None = None
+        # survives _invalidate_client dropping _car, so entity setup right
+        # after a GPS 8002 reset still sees the capabilities (#232)
+        self._capabilities: Any = None
         self._realtime_endpoint_unsupported: bool = False
         # ``getEnergyConsumption`` returns ``code=1001`` on several VINs
         # (notably the Sealion 7 EU trim).  pyBYD translates that to
@@ -878,14 +881,19 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         req_perm = _CAPABILITY_GUEST_PERMISSION.get(capability_key)
         if req_perm is not None and not self.guest_has_permission(req_perm):
             return False
-        car = getattr(self, "_car", None)
-        if car is None:
-            return False
-        capabilities = getattr(car, "capabilities", None)
+        capabilities = self._known_capabilities()
         if capabilities is None:
             return False
         value = getattr(capabilities, capability_key, None)
         return bool(value)
+
+    def _known_capabilities(self) -> Any:
+        """Capabilities of the current car, else the last ones seen."""
+        car = getattr(self, "_car", None)
+        capabilities = getattr(car, "capabilities", None) if car is not None else None
+        if capabilities is not None:
+            return capabilities
+        return getattr(self, "_capabilities", None)
 
     def capability_supported(self, capability_key: str) -> bool:
         """Return True unless pyBYD explicitly marks *capability_key* False.
@@ -898,10 +906,7 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         req_perm = _CAPABILITY_GUEST_PERMISSION.get(capability_key)
         if req_perm is not None and not self.guest_has_permission(req_perm):
             return False
-        car = getattr(self, "_car", None)
-        if car is None:
-            return True
-        capabilities = getattr(car, "capabilities", None)
+        capabilities = self._known_capabilities()
         if capabilities is None:
             return True
         return getattr(capabilities, capability_key, None) is not False
@@ -951,6 +956,7 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
 
         if self._car is None:
             self._car = await self._api.async_get_car(self._vin, self._vehicle)
+            self._capabilities = getattr(self._car, "capabilities", None)
 
         car = self._car
 
