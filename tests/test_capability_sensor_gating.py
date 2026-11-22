@@ -92,6 +92,9 @@ class _FakeCoordinator:
     async def async_get_standby_plans(self) -> None:
         return None
 
+    async def async_maintenance_supported(self) -> bool:
+        return False
+
 
 @pytest.mark.asyncio
 async def test_binary_sensor_skips_unsupported_dtc_tpms_and_charging(
