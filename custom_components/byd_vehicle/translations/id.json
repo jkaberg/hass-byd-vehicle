@@ -291,9 +291,6 @@
       "esp": {
         "name": "Stabilitas elektronik"
       },
-      "pwr": {
-        "name": "Peringatan daya"
-      },
       "power_system": {
         "name": "Sistem tenaga"
       },

@@ -616,9 +616,6 @@
       "esp": {
         "name": "Electronic stability"
       },
-      "pwr": {
-        "name": "Power warning"
-      },
       "power_system": {
         "name": "Power system"
       },
@@ -668,7 +665,7 @@
         "name": "Scheduled charge until full"
       },
       "ac_compressor": {
-        "name": "A/C compressor"
+        "name": "A/C mode"
       },
       "ac_running": {
         "name": "A/C"

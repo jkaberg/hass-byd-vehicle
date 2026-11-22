@@ -291,9 +291,6 @@
       "esp": {
         "name": "Elektronische stabiliteit"
       },
-      "pwr": {
-        "name": "Waarschuwing voor stroom"
-      },
       "power_system": {
         "name": "Voedingssysteem"
       },

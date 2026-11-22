@@ -291,9 +291,6 @@
       "esp": {
         "name": "电子稳定性"
       },
-      "pwr": {
-        "name": "电量警告"
-      },
       "power_system": {
         "name": "电源系统"
       },

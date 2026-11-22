@@ -291,9 +291,6 @@
       "esp": {
         "name": "Stabilité électronique"
       },
-      "pwr": {
-        "name": "Avertissement de puissance"
-      },
       "power_system": {
         "name": "Système d'alimentation"
       },

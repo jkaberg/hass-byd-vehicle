@@ -291,9 +291,6 @@
       "esp": {
         "name": "Kestabilan elektronik"
       },
-      "pwr": {
-        "name": "Amaran kuasa"
-      },
       "power_system": {
         "name": "Sistem kuasa"
       },

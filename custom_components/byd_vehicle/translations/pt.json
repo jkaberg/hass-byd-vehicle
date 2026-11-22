@@ -291,9 +291,6 @@
       "esp": {
         "name": "Estabilidade eletrônica"
       },
-      "pwr": {
-        "name": "Aviso de energia"
-      },
       "power_system": {
         "name": "Sistema de energia"
       },

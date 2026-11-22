@@ -165,8 +165,8 @@ async def test_switch_and_time_gate_smart_charging_on_start_charge(
 
     entry = SimpleNamespace(entry_id="e")
 
-    # Without start_charge
-    coord_no = _FakeCoordinator(available_keys=set())
+    # start_charge explicitly unsupported
+    coord_no = _FakeCoordinator(available_keys=set(), supported_overrides={"start_charge": False})
     hass_no: Any = SimpleNamespace(
         data={DOMAIN: {"e": {"coordinators": {"VIN": coord_no}}}}
     )
@@ -177,8 +177,8 @@ async def test_switch_and_time_gate_smart_charging_on_start_charge(
     assert sw_no == ["BydDisablePollingSwitch"]
     assert tm_no == []
 
-    # With start_charge
-    coord_yes = _FakeCoordinator(available_keys={"start_charge"})
+    # start_charge unknown (latest_config missing or failed): keep the entities
+    coord_yes = _FakeCoordinator(available_keys=set())
     hass_yes: Any = SimpleNamespace(
         data={DOMAIN: {"e": {"coordinators": {"VIN": coord_yes}}}}
     )

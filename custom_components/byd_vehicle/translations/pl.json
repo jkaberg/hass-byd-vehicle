@@ -291,9 +291,6 @@
       "esp": {
         "name": "Stabilność elektroniczna"
       },
-      "pwr": {
-        "name": "Ostrzeżenie dotyczące zasilania"
-      },
       "power_system": {
         "name": "System zasilania"
       },

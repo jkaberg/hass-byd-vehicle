@@ -291,9 +291,6 @@
       "esp": {
         "name": "ESP-Warnung"
       },
-      "pwr": {
-        "name": "Stromwarnung"
-      },
       "power_system": {
         "name": "Energiesystem"
       },
