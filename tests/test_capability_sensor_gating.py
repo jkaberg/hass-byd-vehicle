@@ -10,6 +10,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock
 
 import pytest
+from pybyd.models.vehicle import EnergyType
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -73,9 +74,12 @@ class _FakeCoordinator:
         *,
         supported_overrides: dict[str, bool] | None = None,
         available_keys: set[str] | None = None,
+        energy_type: EnergyType | None = None,
     ) -> None:
         self.vin = "VIN"
-        self.vehicle = SimpleNamespace(model_name="ATTO 3", brand_name="BYD")
+        self.vehicle = SimpleNamespace(
+            model_name="ATTO 3", brand_name="BYD", energy_type=energy_type
+        )
         self.inbox_enabled = False
         self._supported = supported_overrides or {}
         self._available = available_keys or set()
@@ -150,6 +154,53 @@ async def test_sensor_skips_direct_tpms_and_charging_when_unsupported(
     assert "right_rear_tire_pressure" not in added
     assert "scheduled_charge_start_time" not in added
     assert "elec_percent" in added
+
+
+@pytest.mark.asyncio
+async def test_sensor_skips_hybrid_only_on_ev_and_energy_analysis_when_unsupported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        sensor,
+        "BydSensor",
+        lambda coordinator, vin, vehicle, desc: desc.key,
+    )
+    entry = SimpleNamespace(entry_id="e")
+
+    coord_ev = _FakeCoordinator(
+        energy_type=EnergyType.EV,
+        supported_overrides={"energy_analysis": False},
+    )
+    hass_ev: Any = SimpleNamespace(
+        data={DOMAIN: {"e": {"coordinators": {"VIN": coord_ev}}}}
+    )
+    added_ev: list[Any] = []
+    await sensor.async_setup_entry(hass_ev, cast(Any, entry), added_ev.extend)
+
+    for key in (
+        "oil_endurance",
+        "oil_percent",
+        "total_oil",
+        "engine_status",
+        "ect_value",
+        "last_50km_avg_fuel_consumption",
+        "lifetime_avg_fuel_consumption",
+        "energy_last_50km_oil_consumption",
+        "energy_cumulative_total_mileage",
+        "energy_self_graph_today",
+        "energy_auto_model_graph_today",
+    ):
+        assert key not in added_ev
+    assert "elec_percent" in added_ev
+
+    coord_hybrid = _FakeCoordinator(energy_type=EnergyType.HYBRID)
+    hass_hybrid: Any = SimpleNamespace(
+        data={DOMAIN: {"e": {"coordinators": {"VIN": coord_hybrid}}}}
+    )
+    added_hybrid: list[Any] = []
+    await sensor.async_setup_entry(hass_hybrid, cast(Any, entry), added_hybrid.extend)
+    for key in ("oil_endurance", "oil_percent", "engine_status", "energy_self_graph_today"):
+        assert key in added_hybrid
 
 
 @pytest.mark.asyncio
