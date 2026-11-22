@@ -536,11 +536,11 @@
       "next_climate_plan": {
         "name": "Next climate plan"
       },
-      "next_maintenance_mileage": {
-        "name": "Next maintenance mileage"
+      "last_service_mileage": {
+        "name": "Last service mileage"
       },
-      "next_maintenance_date": {
-        "name": "Next maintenance date"
+      "last_service_date": {
+        "name": "Last service date"
       }
     },
     "binary_sensor": {
@@ -669,9 +669,6 @@
       },
       "scheduled_charge_until_full": {
         "name": "Scheduled charge until full"
-      },
-      "maintenance_booked": {
-        "name": "Maintenance booked"
       },
       "ac_compressor": {
         "name": "A/C mode"

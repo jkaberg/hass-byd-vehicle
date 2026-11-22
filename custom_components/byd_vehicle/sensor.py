@@ -1251,11 +1251,11 @@ class BydNextClimatePlanSensor(BydVehicleEntity, SensorEntity):
         return attributes
 
 
-class BydNextMaintenanceMileageSensor(BydVehicleEntity, SensorEntity):
-    """Recommended odometer mileage for the next vehicle service."""
+class BydLastServiceMileageSensor(BydVehicleEntity, SensorEntity):
+    """Odometer reading at the most recent workshop visit."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "next_maintenance_mileage"
+    _attr_translation_key = "last_service_mileage"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.DISTANCE
     _attr_native_unit_of_measurement = UnitOfLength.KILOMETERS
@@ -1265,25 +1265,26 @@ class BydNextMaintenanceMileageSensor(BydVehicleEntity, SensorEntity):
         self._vin = coordinator.vin
         self._vehicle = coordinator.vehicle
         super().__init__(coordinator)
-        self._attr_unique_id = f"{self._vin}_sensor_next_maintenance_mileage"
+        self._attr_unique_id = f"{self._vin}_sensor_last_service_mileage"
 
     @property
     def available(self) -> bool:
-        """Available once maintenance recommendation was fetched."""
+        """Available once the service history was fetched."""
         return super().available and self.coordinator.maintenance is not None
 
     @property
     def native_value(self) -> int | None:
-        """Return next recommended maintenance mileage in km."""
-        rec = self.coordinator.maintenance
-        return rec.next_maintenance_mileage if rec is not None else None
+        """Return the mileage of the latest service in km."""
+        history = self.coordinator.maintenance
+        latest = history.latest if history is not None else None
+        return latest.mileage if latest is not None else None
 
 
-class BydNextMaintenanceDateSensor(BydVehicleEntity, SensorEntity):
-    """Recommended date for the next vehicle service."""
+class BydLastServiceDateSensor(BydVehicleEntity, SensorEntity):
+    """Date of the most recent workshop visit."""
 
     _attr_has_entity_name = True
-    _attr_translation_key = "next_maintenance_date"
+    _attr_translation_key = "last_service_date"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.DATE
     _attr_icon = "mdi:calendar-wrench"
@@ -1292,28 +1293,31 @@ class BydNextMaintenanceDateSensor(BydVehicleEntity, SensorEntity):
         self._vin = coordinator.vin
         self._vehicle = coordinator.vehicle
         super().__init__(coordinator)
-        self._attr_unique_id = f"{self._vin}_sensor_next_maintenance_date"
+        self._attr_unique_id = f"{self._vin}_sensor_last_service_date"
 
     @property
     def available(self) -> bool:
-        """Available once maintenance recommendation was fetched."""
+        """Available once the service history was fetched."""
         return super().available and self.coordinator.maintenance is not None
 
     @property
     def native_value(self) -> date | None:
-        """Return next recommended maintenance date."""
-        rec = self.coordinator.maintenance
-        if rec is None:
+        """Return the date of the latest service."""
+        history = self.coordinator.maintenance
+        latest = history.latest if history is not None else None
+        if latest is None or latest.service_date is None:
             return None
-        if rec.next_maintenance_date is not None:
-            return rec.next_maintenance_date.date()
-        raw_str = rec.next_maintenance_date_str.strip()
-        if raw_str:
-            try:
-                return date.fromisoformat(raw_str[:10])
-            except ValueError:
-                return None
-        return None
+        return dt_util.as_local(latest.service_date).date()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the workshop and visit count."""
+        history = self.coordinator.maintenance
+        latest = history.latest if history is not None else None
+        return {
+            "shop_name": latest.shop_name if latest is not None else None,
+            "service_count": len(history.records) if history is not None else 0,
+        }
 
 
 async def _plans_supported(coordinator: BydDataUpdateCoordinator) -> bool:
@@ -1345,8 +1349,8 @@ async def async_setup_entry(
         if await _plans_supported(coordinator):
             entities.append(BydNextClimatePlanSensor(coordinator))
         if await coordinator.async_maintenance_supported():
-            entities.append(BydNextMaintenanceMileageSensor(coordinator))
-            entities.append(BydNextMaintenanceDateSensor(coordinator))
+            entities.append(BydLastServiceMileageSensor(coordinator))
+            entities.append(BydLastServiceDateSensor(coordinator))
         vehicle = coordinator.vehicle
         for description in SENSOR_DESCRIPTIONS:
             if (

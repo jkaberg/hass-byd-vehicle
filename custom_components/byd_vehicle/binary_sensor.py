@@ -554,41 +554,8 @@ async def async_setup_entry(
             ):
                 continue
             entities.append(BydBinarySensor(coordinator, vin, vehicle, description))
-        if await coordinator.async_maintenance_supported():
-            entities.append(BydMaintenanceBookedBinarySensor(coordinator, vin, vehicle))
 
     async_add_entities(entities)
-
-
-class BydMaintenanceBookedBinarySensor(BydVehicleEntity, BinarySensorEntity):
-    """Whether a maintenance appointment is currently booked."""
-
-    _attr_has_entity_name = True
-    _attr_translation_key = "maintenance_booked"
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_icon = "mdi:calendar-check"
-
-    def __init__(
-        self,
-        coordinator: BydDataUpdateCoordinator,
-        vin: str,
-        vehicle: Vehicle,
-    ) -> None:
-        self._vin = vin
-        self._vehicle = vehicle
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{vin}_binary_sensor_maintenance_booked"
-
-    @property
-    def available(self) -> bool:
-        """Available once maintenance recommendation was fetched."""
-        return super().available and self.coordinator.maintenance is not None
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return whether a maintenance appointment is booked."""
-        rec = self.coordinator.maintenance
-        return rec.booked if rec is not None else None
 
 
 class BydBinarySensor(BydVehicleEntity, BinarySensorEntity, RestoreEntity):

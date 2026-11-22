@@ -45,7 +45,7 @@ from pybyd import (
     VehicleSnapshot,
 )
 from pybyd.config import BydConfig, DeviceProfile
-from pybyd.models.maintenance import MaintenanceRecommendation
+from pybyd.models.maintenance import MaintenanceHistory
 from pybyd.models.message_center import VehicleMsgItemInfo
 from pybyd.models.ota import OtaUpgradeInfo
 from pybyd.models.standby import (
@@ -710,7 +710,7 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         self._ota_supported: bool | None = None
         self._ota_fetched_at: datetime | None = None
         self._ota_probe = asyncio.Lock()
-        self._maintenance: MaintenanceRecommendation | None = None
+        self._maintenance: MaintenanceHistory | None = None
         self._maintenance_supported: bool | None = None
         self._maintenance_fetched_at: datetime | None = None
         self._maintenance_probe = asyncio.Lock()
@@ -1256,25 +1256,25 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
             _LOGGER.debug("Plan fetch failed: vin=%s, error=%s", self._vin[-6:], exc)
 
     @property
-    def maintenance(self) -> MaintenanceRecommendation | None:
-        """Last fetched maintenance recommendation, ``None`` before the first fetch."""
+    def maintenance(self) -> MaintenanceHistory | None:
+        """Last fetched service history, ``None`` before the first fetch."""
         return self._maintenance
 
-    async def async_get_maintenance(self) -> MaintenanceRecommendation | None:
-        """Fetch next recommended maintenance date/mileage and cache it.
+    async def async_get_maintenance(self) -> MaintenanceHistory | None:
+        """Fetch the service history and cache it.
 
         Returns ``None`` when the cloud doesn't offer maintenance for this car.
         Other failures raise ``UpdateFailed``.
         """
 
-        async def _handler(client: BydClient) -> MaintenanceRecommendation | None:
+        async def _handler(client: BydClient) -> MaintenanceHistory | None:
             try:
-                return await client.get_maintenance_recommendation(self._vin)
+                return await client.get_maintenance_history(self._vin)
             except BydEndpointNotSupportedError:
                 return None
 
-        result: MaintenanceRecommendation | None = await self._api.async_call(
-            _handler, vin=self._vin, command="get_maintenance_recommendation"
+        result: MaintenanceHistory | None = await self._api.async_call(
+            _handler, vin=self._vin, command="get_maintenance_history"
         )
         self._maintenance_fetched_at = datetime.now(UTC)
         self._maintenance_supported = result is not None
