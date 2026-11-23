@@ -967,6 +967,7 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         car = self._car
 
         # --- Realtime ---
+        realtime_not_ready = False
         try:
             await car.update_realtime()
         except _AUTH_ERRORS:
@@ -982,6 +983,7 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         except BydDataUnavailableError as exc:
             # asleep car answering with an all-zero placeholder; last values stay
             _LOGGER.debug("Realtime not ready: vin=%s, error=%s", self._vin, exc)
+            realtime_not_ready = True
         except _RECOVERABLE_ERRORS as exc:
             _LOGGER.warning(
                 "Realtime fetch failed: vin=%s, error=%s",
@@ -1033,8 +1035,13 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
         snapshot = car.state
         self._schedule_hvac_final_reconcile_if_needed(previous_snapshot, snapshot)
 
-        # Bail if we still have no realtime data at all
-        if snapshot.realtime is None and not self._realtime_endpoint_unsupported:
+        # Bail if we still have no realtime data at all. A car asleep at setup
+        # has none yet and must not block setup until it wakes (#238).
+        if (
+            snapshot.realtime is None
+            and not self._realtime_endpoint_unsupported
+            and not realtime_not_ready
+        ):
             raise UpdateFailed(
                 f"Realtime state unavailable for {self._vin}; no data returned from API"
             )
