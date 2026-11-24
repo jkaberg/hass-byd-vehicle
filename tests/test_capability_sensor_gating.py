@@ -177,7 +177,7 @@ async def test_sensor_skips_hybrid_only_on_ev_and_energy_analysis_when_unsupport
     added_ev: list[Any] = []
     await sensor.async_setup_entry(hass_ev, cast(Any, entry), added_ev.extend)
 
-    for key in (
+    hybrid_only_keys = (
         "oil_endurance",
         "oil_percent",
         "total_oil",
@@ -186,12 +186,39 @@ async def test_sensor_skips_hybrid_only_on_ev_and_energy_analysis_when_unsupport
         "last_50km_avg_fuel_consumption",
         "lifetime_avg_fuel_consumption",
         "energy_last_50km_oil_consumption",
+    )
+    energy_analysis_keys = (
         "energy_cumulative_total_mileage",
+        "energy_last_50km_ev_consumption",
+        "energy_last_50km_oil_consumption",
+        "energy_last_50km_drive_distribution",
+        "energy_last_50km_elect_distribution",
+        "energy_last_50km_air_distribution",
+        "energy_last_50km_other_distribution",
         "energy_self_graph_today",
         "energy_auto_model_graph_today",
-    ):
+    )
+
+    for key in (*hybrid_only_keys, *energy_analysis_keys):
         assert key not in added_ev
     assert "elec_percent" in added_ev
+    assert "last_50km_avg_eq_consumption" in added_ev
+
+    # EV with energy_analysis supported keeps non-hybrid energy sensors,
+    # while still skipping energy_last_50km_oil_consumption (hybrid_only=True).
+    coord_ev_energy = _FakeCoordinator(energy_type=EnergyType.EV)
+    hass_ev_energy: Any = SimpleNamespace(
+        data={DOMAIN: {"e": {"coordinators": {"VIN": coord_ev_energy}}}}
+    )
+    added_ev_energy: list[Any] = []
+    await sensor.async_setup_entry(
+        hass_ev_energy, cast(Any, entry), added_ev_energy.extend
+    )
+    for key in hybrid_only_keys:
+        assert key not in added_ev_energy
+    for key in energy_analysis_keys:
+        if key != "energy_last_50km_oil_consumption":
+            assert key in added_ev_energy
 
     coord_hybrid = _FakeCoordinator(energy_type=EnergyType.HYBRID)
     hass_hybrid: Any = SimpleNamespace(
@@ -199,7 +226,7 @@ async def test_sensor_skips_hybrid_only_on_ev_and_energy_analysis_when_unsupport
     )
     added_hybrid: list[Any] = []
     await sensor.async_setup_entry(hass_hybrid, cast(Any, entry), added_hybrid.extend)
-    for key in ("oil_endurance", "oil_percent", "engine_status", "energy_self_graph_today"):
+    for key in (*hybrid_only_keys, *energy_analysis_keys):
         assert key in added_hybrid
 
 
