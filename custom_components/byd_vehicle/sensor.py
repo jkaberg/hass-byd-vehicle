@@ -144,6 +144,7 @@ class BydSensorDescription(SensorEntityDescription):
     source: str = "realtime"
     attr_key: str | None = None
     capability_key: str | None = None
+    hybrid_only: bool = False
     value_fn: Callable[[Any], Any] | None = None
     unit_fn: Callable[[Any], str | None] | None = None
     state_attrs_fn: Callable[[Any], dict[str, Any]] | None = None
@@ -735,6 +736,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="oil_endurance",
         source="realtime",
+        hybrid_only=True,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -745,6 +747,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="oil_percent",
         source="realtime",
+        hybrid_only=True,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:gas-station",
@@ -755,6 +758,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="total_oil",
         source="realtime",
+        hybrid_only=True,
         icon="mdi:gas-station",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -763,6 +767,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="engine_status",
         source="realtime",
+        hybrid_only=True,
         icon="mdi:engine",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -785,6 +790,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="ect_value",
         source="realtime",
+        hybrid_only=True,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -970,6 +976,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="last_50km_avg_fuel_consumption",
         source="snapshot",
+        hybrid_only=True,
         value_fn=_LAST_50KM_FUEL_VALUE,
         unit_fn=_LAST_50KM_FUEL_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
@@ -990,6 +997,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="lifetime_avg_fuel_consumption",
         source="snapshot",
+        hybrid_only=True,
         value_fn=_LIFETIME_FUEL_VALUE,
         unit_fn=_LIFETIME_FUEL_UNIT,
         state_class=SensorStateClass.MEASUREMENT,
@@ -1003,6 +1011,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="energy_cumulative_total_mileage",
         source="energy_cumulative",
+        capability_key="energy_analysis",
         attr_key="total_mileage",
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
@@ -1014,6 +1023,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="energy_last_50km_ev_consumption",
         source="energy_nearest",
+        capability_key="energy_analysis",
         attr_key="ev_consumption",
         unit_fn=_attr_getter("ev_value_unit"),
         state_class=SensorStateClass.MEASUREMENT,
@@ -1024,6 +1034,8 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="energy_last_50km_oil_consumption",
         source="energy_nearest",
+        capability_key="energy_analysis",
+        hybrid_only=True,
         attr_key="oil_consumption",
         unit_fn=_attr_getter("oil_value_unit"),
         state_class=SensorStateClass.MEASUREMENT,
@@ -1044,6 +1056,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="energy_last_50km_drive_distribution",
         source="energy_nearest",
+        capability_key="energy_analysis",
         attr_key="drive_distribution",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -1054,6 +1067,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="energy_last_50km_elect_distribution",
         source="energy_nearest",
+        capability_key="energy_analysis",
         attr_key="elect_distribution",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -1064,6 +1078,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="energy_last_50km_air_distribution",
         source="energy_nearest",
+        capability_key="energy_analysis",
         attr_key="air_distribution",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -1074,6 +1089,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="energy_last_50km_other_distribution",
         source="energy_nearest",
+        capability_key="energy_analysis",
         attr_key="other_distribution",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -1089,6 +1105,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="energy_self_graph_today",
         source="energy_self_graph",
+        capability_key="energy_analysis",
         value_fn=lambda obj: (
             obj.energy_consumption[-1]
             if obj is not None and obj.energy_consumption
@@ -1110,6 +1127,7 @@ SENSOR_DESCRIPTIONS: tuple[BydSensorDescription, ...] = (
     BydSensorDescription(
         key="energy_auto_model_graph_today",
         source="energy_auto_model_graph",
+        capability_key="energy_analysis",
         value_fn=lambda obj: (
             obj.energy_consumption[-1]
             if obj is not None and obj.energy_consumption
@@ -1356,6 +1374,11 @@ async def async_setup_entry(
             if (
                 description.capability_key is not None
                 and not coordinator.capability_supported(description.capability_key)
+            ):
+                continue
+            if (
+                description.hybrid_only
+                and getattr(vehicle, "energy_type", None) == EnergyType.EV
             ):
                 continue
             if description.key == "gps_last_updated":
