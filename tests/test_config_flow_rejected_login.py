@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -51,7 +51,7 @@ async def test_rejected_login_keeps_input_and_logs_code(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     flow = config_flow.BydVehicleConfigFlow()
-    flow.hass = object()  # type: ignore[assignment]
+    flow.hass = cast(Any, object())
     error = BydAuthenticationError("Login failed: code=1001 message=bad", code="1001")
     with patch.object(config_flow, "_validate_input", AsyncMock(side_effect=error)):
         with caplog.at_level(logging.WARNING):
