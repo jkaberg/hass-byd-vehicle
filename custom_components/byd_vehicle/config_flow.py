@@ -103,6 +103,24 @@ def _climate_duration_label_to_minutes(label: Any) -> int:
     return _normalize_climate_duration_minutes(stripped)
 
 
+def _defaults_from_input(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Turn submitted form values back into schema defaults.
+
+    The form holds the country label and climate duration label, while the
+    defaults hold the country code and minutes. Without this a rejected
+    login cleared the form and reset the country.
+    """
+    defaults = dict(user_input)
+    country = COUNTRY_OPTIONS.get(user_input.get(CONF_COUNTRY_CODE, ""))
+    if country is not None:
+        defaults[CONF_COUNTRY_CODE] = country[0]
+    if CONF_CLIMATE_DURATION in user_input:
+        defaults[CONF_CLIMATE_DURATION] = _climate_duration_label_to_minutes(
+            user_input[CONF_CLIMATE_DURATION]
+        )
+    return defaults
+
+
 async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
     session = async_get_clientsession(hass)
     country_name = data[CONF_COUNTRY_CODE]
@@ -222,7 +240,9 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
         if user_input is not None:
             try:
                 await _validate_input(self.hass, user_input)
-            except BydAuthenticationError:
+            except BydAuthenticationError as exc:
+                # carries the server's code, eg wrong country or password
+                _LOGGER.warning("BYD login rejected: %s", exc)
                 errors["base"] = "invalid_auth"
             except BydControlPasswordError:
                 errors["base"] = "invalid_control_pin"
@@ -310,7 +330,12 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                     },
                 )
 
-        data_schema = self._build_user_schema(self._reauth_defaults())
+        defaults = (
+            self._reauth_defaults()
+            if user_input is None
+            else _defaults_from_input(user_input)
+        )
+        data_schema = self._build_user_schema(defaults)
 
         return self.async_show_form(
             step_id="user", data_schema=data_schema, errors=errors
@@ -333,7 +358,9 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
         if user_input is not None:
             try:
                 await _validate_input(self.hass, user_input)
-            except BydAuthenticationError:
+            except BydAuthenticationError as exc:
+                # carries the server's code, eg wrong country or password
+                _LOGGER.warning("BYD login rejected: %s", exc)
                 errors["base"] = "invalid_auth"
             except BydControlPasswordError:
                 errors["base"] = "invalid_control_pin"
@@ -415,6 +442,8 @@ class BydVehicleConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: i
                 DEFAULT_INBOX_NOTIFICATIONS,
             ),
         }
+        if user_input is not None:
+            defaults = _defaults_from_input(user_input)
         data_schema = self._build_user_schema(defaults)
 
         return self.async_show_form(
