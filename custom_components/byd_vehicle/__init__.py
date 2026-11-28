@@ -350,7 +350,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # ``Fetch charging`` button.
     _LOGGER.debug("Running initial charging fetch for BYD coordinators")
     for vin, coordinator in coordinators.items():
-        if not coordinator.capability_supported("start_charge"):
+        if not coordinator.capability_supported("start_charge", guest_gated=False):
             continue
         try:
             await coordinator.async_fetch_charging()

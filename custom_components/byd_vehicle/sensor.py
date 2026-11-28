@@ -1373,7 +1373,9 @@ async def async_setup_entry(
         for description in SENSOR_DESCRIPTIONS:
             if (
                 description.capability_key is not None
-                and not coordinator.capability_supported(description.capability_key)
+                and not coordinator.capability_supported(
+                    description.capability_key, guest_gated=False
+                )
             ):
                 continue
             if (

@@ -72,6 +72,34 @@ def test_coordinator_capability_available_enforces_guest_permissions() -> None:
     assert coordinator.capability_available("location") is False
 
 
+def test_read_only_capability_ignores_guest_permission() -> None:
+    """A guest without "41" loses charge controls but keeps schedule state (#248)."""
+    coordinator: Any = object.__new__(BydDataUpdateCoordinator)
+    coordinator._car = SimpleNamespace(
+        capabilities=SimpleNamespace(start_charge=True, battery_heat=True)
+    )
+    coordinator._vehicle = Vehicle.model_validate(
+        {
+            "vin": "VIN",
+            "empowerType": -1,
+            "rangeDetailList": [
+                {
+                    "code": "2",
+                    "name": "Keys & Control",
+                    "childList": [{"code": "21", "name": "Basic", "childList": []}],
+                }
+            ],
+        }
+    )
+    assert coordinator.capability_supported("start_charge") is False
+    assert coordinator.capability_supported("start_charge", guest_gated=False) is True
+    assert coordinator.capability_supported("battery_heat", guest_gated=False) is True
+
+    # the car's own capability still decides when guest gating is off
+    coordinator._car = SimpleNamespace(capabilities=SimpleNamespace(start_charge=False))
+    assert coordinator.capability_supported("start_charge", guest_gated=False) is False
+
+
 @pytest.mark.asyncio
 async def test_gps_coordinator_skips_poll_when_guest_lacks_31() -> None:
     gps_coord: Any = object.__new__(BydGpsUpdateCoordinator)
@@ -112,7 +140,7 @@ class _FakeCoord:
     def capability_available(self, key: str) -> bool:
         return key in self._available
 
-    def capability_supported(self, key: str) -> bool:
+    def capability_supported(self, key: str, *, guest_gated: bool = True) -> bool:
         # a guest without the permission reads as unsupported either way
         return key in self._available
 

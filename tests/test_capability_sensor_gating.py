@@ -84,7 +84,7 @@ class _FakeCoordinator:
         self._supported = supported_overrides or {}
         self._available = available_keys or set()
 
-    def capability_supported(self, key: str) -> bool:
+    def capability_supported(self, key: str, *, guest_gated: bool = True) -> bool:
         return self._supported.get(key, True)
 
     def capability_available(self, key: str) -> bool:

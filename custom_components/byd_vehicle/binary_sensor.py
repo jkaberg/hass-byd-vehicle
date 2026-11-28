@@ -550,7 +550,9 @@ async def async_setup_entry(
         for description in BINARY_SENSOR_DESCRIPTIONS:
             if (
                 description.capability_key is not None
-                and not coordinator.capability_supported(description.capability_key)
+                and not coordinator.capability_supported(
+                    description.capability_key, guest_gated=False
+                )
             ):
                 continue
             entities.append(BydBinarySensor(coordinator, vin, vehicle, description))

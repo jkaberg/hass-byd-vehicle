@@ -901,16 +901,25 @@ class BydDataUpdateCoordinator(_ReschedulingCoordinator):
             return capabilities
         return getattr(self, "_capabilities", None)
 
-    def capability_supported(self, capability_key: str) -> bool:
+    def capability_supported(
+        self, capability_key: str, *, guest_gated: bool = True
+    ) -> bool:
         """Return True unless pyBYD explicitly marks *capability_key* False.
 
         Used for read-only sensors and settings so vehicles without
         ``latest_config`` metadata (or a failed fetch at startup) keep their
         entities, while vehicles whose ``latest_config`` explicitly omits a
         capability, or a guest without the permission, skip them.
+
+        Guest permissions guard commands, so read-only state passes
+        ``guest_gated=False`` to stay visible to guests without control (#248).
         """
         req_perm = _CAPABILITY_GUEST_PERMISSION.get(capability_key)
-        if req_perm is not None and not self.guest_has_permission(req_perm):
+        if (
+            guest_gated
+            and req_perm is not None
+            and not self.guest_has_permission(req_perm)
+        ):
             return False
         capabilities = self._known_capabilities()
         if capabilities is None:
